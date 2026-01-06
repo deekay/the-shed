@@ -1,0 +1,5 @@
+# Backup files (we have git now)
+*.backup.html
+
+# Claude Code internal
+.claude/
