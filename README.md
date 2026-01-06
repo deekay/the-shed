@@ -2,7 +2,7 @@
 
 A web-based interactive training app for learning jazz piano fundamentals. Practice intervals, chords, voicings, and common progressions from your MIDI keyboard with real-time feedback on your computer.
 
-**Live demo:** https://deekay.github.io/piano-tutor/
+**Full app:** https://deekay.github.io/piano-tutor/
 
 ## Features
 
