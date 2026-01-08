@@ -133,6 +133,9 @@
                 <button id="scalesMode" onclick="switchMode('scales')" title="Learn scales that work over each chord type using the chord tone + whole step approach" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
                     13. Jazz Scales
                 </button>
+                <button id="pentMode" onclick="switchMode('pent')" title="Pentatonic and blues scales: minor pentatonic, major pentatonic, and blues scale in all 12 keys" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
+                    14. Pentatonic
+                </button>
             </div>
         </div>
 
@@ -172,7 +175,7 @@
                     </div>
                     <div>
                         <div class="text-xs text-slate-500 uppercase tracking-wide mb-1">Scales</div>
-                        <p><strong>13:</strong> Jazz scales that work over each chord type</p>
+                        <p><strong>13-14:</strong> Jazz scales over chord types, pentatonic & blues scales</p>
                     </div>
                 </div>
                 <p class="text-xs text-slate-500 mt-4">Hover over any mode button for a description.</p>
@@ -2173,6 +2176,121 @@
             </div>
         </div>
 
+        <!-- ==================== PENTATONIC & BLUES MODE ==================== -->
+        <div id="pentPanel" class="mode-panel hidden">
+            <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h2 class="text-xl font-semibold text-white mb-1">Pentatonic & Blues Scales</h2>
+                        <p class="text-sm text-slate-400">Play <span class="text-blue-400">pentatonic</span> and <span class="text-blue-400">blues</span> scales in all 12 keys</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-slate-400">Avg Time</p>
+                        <p id="pent_responseTime" class="text-2xl font-mono timer-fast">--</p>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div id="pent_settingsPanel" class="mb-6 p-4 bg-slate-900 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Scale Type:</label>
+                            <select id="pent_scaleTypeSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="all">All Types</option>
+                                <option value="minPent">Minor Pentatonic only</option>
+                                <option value="majPent">Major Pentatonic only</option>
+                                <option value="blues">Blues Scale only</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Rounds:</label>
+                            <select id="pent_roundsSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="6">6</option>
+                                <option value="12" selected>12</option>
+                                <option value="24">24</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 ml-4">
+                            <input type="checkbox" id="pent_showHints" class="w-4 h-4 rounded bg-slate-700 border-slate-600">
+                            <label for="pent_showHints" class="text-sm text-slate-400">Show hints</label>
+                        </div>
+                    </div>
+                    <p id="pent_settingsHint" class="text-xs text-slate-500 mt-3">Minor Pent: 1 b3 4 5 b7 | Major Pent: 1 2 3 5 6 | Blues: 1 b3 4 b5 5 b7</p>
+                </div>
+
+                <!-- Challenge Display -->
+                <div id="pent_challengeDisplay" class="mb-6 p-8 bg-slate-900 rounded-lg text-center hidden">
+                    <p class="text-slate-400 mb-2">Play the scale</p>
+                    <p class="text-5xl font-bold text-white mb-2" id="pent_rootDisplay">C</p>
+                    <p class="text-2xl text-blue-400 mb-4" id="pent_scaleNameDisplay">Minor Pentatonic</p>
+
+                    <!-- Scale progress indicator (dynamic) -->
+                    <div class="flex justify-center items-center gap-2 mb-4" id="pent_noteProgress"></div>
+
+                    <p id="pent_expectedNote" class="text-sm text-slate-400 pent-hint">Next: <span class="text-white font-bold" id="pent_expectedNoteValue">C</span></p>
+                </div>
+
+                <!-- Game Complete Display -->
+                <div id="pent_gameCompleteDisplay" class="mb-6 p-8 bg-slate-900 rounded-lg text-center hidden">
+                    <p class="text-2xl font-bold text-green-400 mb-4">Game Complete!</p>
+                    <div class="grid grid-cols-4 gap-4 mb-4">
+                        <div>
+                            <p class="text-slate-400 text-sm">Score</p>
+                            <p id="pent_finalScore" class="text-3xl font-bold text-white">0/12</p>
+                            <p class="text-xs text-slate-500">first-try correct</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Accuracy</p>
+                            <p id="pent_finalAccuracy" class="text-3xl font-bold text-blue-400">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Mistakes</p>
+                            <p id="pent_finalMistakes" class="text-3xl font-bold text-red-400">0</p>
+                            <p class="text-xs text-slate-500">wrong notes</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Avg Time</p>
+                            <p id="pent_finalAvgTime" class="text-3xl font-bold text-purple-400">0s</p>
+                            <p class="text-xs text-slate-500">per scale</p>
+                        </div>
+                    </div>
+                    <div id="pent_finalSlowCount" class="text-yellow-400 text-sm mb-4"></div>
+                </div>
+
+                <!-- Piano -->
+                <div class="w-full overflow-x-auto mb-6 bg-slate-900 rounded-lg p-2 border border-slate-700">
+                    <svg id="pent_pianoSvg" viewBox="0 0 1000 120" class="w-full h-32"></svg>
+                </div>
+
+                <!-- Feedback Float -->
+                <div id="pent_feedbackFloat" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl font-bold pointer-events-none z-50"></div>
+
+                <!-- Controls -->
+                <div class="flex justify-between items-center">
+                    <div class="space-x-4">
+                        <button id="pent_startBtn" onclick="pentStartGame()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded transition">
+                            Start Game
+                        </button>
+                    </div>
+                    <div class="flex gap-4 text-xs text-slate-400">
+                        <span>Round: <span id="pent_currentRound">0</span>/<span id="pent_totalRounds">12</span></span>
+                        <span>Score: <span id="pent_score">0</span></span>
+                        <span>Mistakes: <span id="pent_mistakes">0</span></span>
+                        <span>Slow: <span id="pent_slow">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div id="pent_historyContent" class="bg-slate-800 rounded-lg p-6 shadow-lg mb-6"></div>
+
+            <!-- Breakdown Section -->
+            <div id="pent_breakdownSection" class="bg-slate-800 rounded-lg p-6 shadow-lg hidden">
+                <h2 class="text-xl font-semibold mb-4 text-white">Scale Breakdown</h2>
+                <div id="pent_breakdownGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"></div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center text-slate-500 text-sm mt-8 pt-4 border-t border-slate-700">
             Feedback? DM <a href="https://twitter.com/dksf" target="_blank" class="text-blue-400 hover:text-blue-300">@dksf</a> on Twitter/X
@@ -2204,8 +2322,8 @@
         function switchMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            const modeButtons = { intervals: 'intervalsMode', chords: 'chordsMode', iivi: 'iiviMode', scales: 'scalesMode', ext: 'extMode', alt: 'altMode', adv: 'advMode', minorIivi: 'minorIiviMode', kb: 'kbMode', jtou: 'jtouMode', dom7v: 'dom7vMode', extv: 'extvMode', r251: 'r251Mode' };
-            const modePanels = { intervals: 'intervalsPanel', chords: 'chordsPanel', iivi: 'iiviPanel', scales: 'scalesPanel', ext: 'extPanel', alt: 'altPanel', adv: 'advPanel', minorIivi: 'minorIiviPanel', kb: 'kbPanel', jtou: 'jtouPanel', dom7v: 'dom7vPanel', extv: 'extvPanel', r251: 'r251Panel' };
+            const modeButtons = { intervals: 'intervalsMode', chords: 'chordsMode', iivi: 'iiviMode', scales: 'scalesMode', ext: 'extMode', alt: 'altMode', adv: 'advMode', minorIivi: 'minorIiviMode', kb: 'kbMode', jtou: 'jtouMode', dom7v: 'dom7vMode', extv: 'extvMode', r251: 'r251Mode', pent: 'pentMode' };
+            const modePanels = { intervals: 'intervalsPanel', chords: 'chordsPanel', iivi: 'iiviPanel', scales: 'scalesPanel', ext: 'extPanel', alt: 'altPanel', adv: 'advPanel', minorIivi: 'minorIiviPanel', kb: 'kbPanel', jtou: 'jtouPanel', dom7v: 'dom7vPanel', extv: 'extvPanel', r251: 'r251Panel', pent: 'pentPanel' };
             document.getElementById(modeButtons[mode]).classList.add('active');
             document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.add('hidden'));
             document.getElementById(modePanels[mode]).classList.remove('hidden');
@@ -2365,6 +2483,7 @@
                 else if (currentMode === 'dom7v') dom7vOnNoteOn(note);
                 else if (currentMode === 'extv') extvOnNoteOn(note);
                 else if (currentMode === 'r251') r251OnNoteOn(note);
+                else if (currentMode === 'pent') pentOnNoteOn(note);
             } else if ((cmd & 0xF0) === 128 || ((cmd & 0xF0) === 144 && vel === 0)) {
                 heldNotes.delete(note);
                 // Clear preview piano highlight
@@ -2382,6 +2501,7 @@
                 else if (currentMode === 'dom7v') dom7vOnNoteOff(note);
                 else if (currentMode === 'extv') extvOnNoteOff(note);
                 else if (currentMode === 'r251') r251OnNoteOff(note);
+                else if (currentMode === 'pent') pentOnNoteOff(note);
             }
         }
 
@@ -8555,6 +8675,404 @@
             content.innerHTML = html;
         }
 
+        // ============ PENTATONIC & BLUES MODE ============
+        const PENT_SCALES = {
+            'minPent': {
+                name: 'Minor Pentatonic',
+                intervals: [0, 3, 5, 7, 10],
+                degrees: ['1', 'b3', '4', '5', 'b7']
+            },
+            'majPent': {
+                name: 'Major Pentatonic',
+                intervals: [0, 2, 4, 7, 9],
+                degrees: ['1', '2', '3', '5', '6']
+            },
+            'blues': {
+                name: 'Blues',
+                intervals: [0, 3, 5, 6, 7, 10],
+                degrees: ['1', 'b3', '4', 'b5', '5', 'b7']
+            }
+        };
+
+        let pent_isPlaying = false;
+        let pent_challenge = null;
+        let pent_usedChallenges = new Set();
+        let pent_challengeStartTime = null;
+        let pent_config = null;
+        let pent_currentRound = 0;
+        let pent_firstTryCorrect = 0;
+        let pent_totalMistakes = 0;
+        let pent_roundHadMistake = false;
+        let pent_stats = {};
+        let pent_allTimes = [];
+        let pent_slowCount = 0;
+        let pent_history = [];
+        let pent_cumulativeStats = {};
+        let pent_currentNoteIndex = 0;
+
+        function pentStartGame() {
+            saveAllSettings();
+            const scaleType = document.getElementById('pent_scaleTypeSelect').value;
+            const rounds = parseInt(document.getElementById('pent_roundsSelect').value);
+            const showHints = document.getElementById('pent_showHints').checked;
+
+            pent_config = { scaleType, rounds, showHints };
+            pent_isPlaying = true;
+            pent_usedChallenges.clear();
+            pent_currentRound = 0;
+            pent_firstTryCorrect = 0;
+            pent_totalMistakes = 0;
+            pent_stats = {};
+            pent_allTimes = [];
+            pent_slowCount = 0;
+
+            document.getElementById('pent_settingsPanel').classList.add('hidden');
+            document.getElementById('pent_challengeDisplay').classList.remove('hidden');
+            document.getElementById('pent_gameCompleteDisplay').classList.add('hidden');
+            document.getElementById('pent_startBtn').innerText = 'Playing...';
+            document.getElementById('pent_startBtn').disabled = true;
+            document.getElementById('pent_totalRounds').innerText = rounds;
+
+            // Show/hide hints
+            document.querySelectorAll('.pent-hint').forEach(el => {
+                el.style.display = showHints ? 'block' : 'none';
+            });
+
+            pentNextChallenge();
+        }
+
+        function pentNextChallenge() {
+            if (pent_currentRound >= pent_config.rounds) {
+                pentEndGame();
+                return;
+            }
+
+            pent_currentRound++;
+            pent_roundHadMistake = false;
+            pent_currentNoteIndex = 0;
+            document.getElementById('pent_currentRound').innerText = pent_currentRound;
+
+            // Pick random root and scale type
+            const root = Math.floor(Math.random() * 12);
+            let scaleType;
+            if (pent_config.scaleType === 'all') {
+                const types = Object.keys(PENT_SCALES);
+                scaleType = types[Math.floor(Math.random() * types.length)];
+            } else {
+                scaleType = pent_config.scaleType;
+            }
+
+            const challengeKey = `${root}-${scaleType}`;
+            if (pent_usedChallenges.has(challengeKey) && pent_usedChallenges.size < 36) {
+                pentNextChallenge();
+                return;
+            }
+            pent_usedChallenges.add(challengeKey);
+
+            const scaleDef = PENT_SCALES[scaleType];
+            const expectedNotes = scaleDef.intervals.map(i => (root + i) % 12);
+
+            pent_challenge = {
+                root,
+                scaleType,
+                scaleName: scaleDef.name,
+                expectedNotes,
+                degrees: scaleDef.degrees,
+                key: `${NOTE_NAMES[root]} ${scaleDef.name}`
+            };
+
+            pent_challengeStartTime = Date.now();
+
+            // Update display
+            document.getElementById('pent_rootDisplay').innerText = NOTE_NAMES[root];
+            document.getElementById('pent_scaleNameDisplay').innerText = scaleDef.name;
+
+            // Build note progress indicators
+            const progressDiv = document.getElementById('pent_noteProgress');
+            progressDiv.innerHTML = scaleDef.degrees.map((deg, i) =>
+                `<div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold border-2 border-slate-600" id="pent_note_${i}">
+                    <span class="pent-hint" style="display:${pent_config.showHints ? 'block' : 'none'}">${deg}</span>
+                </div>`
+            ).join('');
+
+            // Update expected note hint
+            document.getElementById('pent_expectedNoteValue').innerText = NOTE_NAMES[expectedNotes[0]];
+
+            // Clear piano highlights
+            for (let i = 0; i < 128; i++) {
+                highlightKey('pent_pianoSvg', i, 'key-correct', false);
+                highlightKey('pent_pianoSvg', i, 'key-error', false);
+            }
+
+            // Initialize stats for this scale if needed
+            if (!pent_stats[pent_challenge.key]) {
+                pent_stats[pent_challenge.key] = { attempts: 0, mistakes: 0, times: [] };
+            }
+            pent_stats[pent_challenge.key].attempts++;
+        }
+
+        function pentOnNoteOn(midi) {
+            if (!pent_isPlaying || !pent_challenge) return;
+
+            const pitchClass = midi % 12;
+            const expectedPitchClass = pent_challenge.expectedNotes[pent_currentNoteIndex];
+
+            if (pitchClass === expectedPitchClass) {
+                // Correct note
+                highlightKey('pent_pianoSvg', midi, 'key-correct', true);
+
+                // Update progress indicator
+                const noteEl = document.getElementById(`pent_note_${pent_currentNoteIndex}`);
+                if (noteEl) {
+                    noteEl.classList.remove('bg-slate-700', 'border-slate-600');
+                    noteEl.classList.add('bg-green-600', 'border-green-400');
+                }
+
+                pent_currentNoteIndex++;
+
+                // Update expected note hint
+                if (pent_currentNoteIndex < pent_challenge.expectedNotes.length) {
+                    document.getElementById('pent_expectedNoteValue').innerText =
+                        NOTE_NAMES[pent_challenge.expectedNotes[pent_currentNoteIndex]];
+                }
+
+                // Check if scale is complete
+                if (pent_currentNoteIndex >= pent_challenge.expectedNotes.length) {
+                    const elapsed = (Date.now() - pent_challengeStartTime) / 1000;
+                    pent_allTimes.push(elapsed);
+                    pent_stats[pent_challenge.key].times.push(elapsed);
+
+                    if (!pent_roundHadMistake) {
+                        pent_firstTryCorrect++;
+                    }
+
+                    if (elapsed > 2) {
+                        pent_slowCount++;
+                    }
+
+                    document.getElementById('pent_score').innerText = pent_firstTryCorrect;
+
+                    // Update avg time display
+                    const avgTime = pent_allTimes.reduce((a, b) => a + b, 0) / pent_allTimes.length;
+                    const timeEl = document.getElementById('pent_responseTime');
+                    timeEl.innerText = avgTime.toFixed(1) + 's';
+                    timeEl.className = `text-2xl font-mono ${avgTime < 2 ? 'timer-fast' : avgTime < 4 ? 'timer-medium' : 'timer-slow'}`;
+
+                    // Show feedback
+                    pentShowFeedback(true);
+
+                    // Next challenge after delay
+                    setTimeout(pentNextChallenge, 800);
+                }
+            } else {
+                // Wrong note
+                highlightKey('pent_pianoSvg', midi, 'key-error', true);
+                pent_totalMistakes++;
+                pent_roundHadMistake = true;
+                pent_stats[pent_challenge.key].mistakes++;
+                document.getElementById('pent_mistakes').innerText = pent_totalMistakes;
+                pentShowFeedback(false);
+
+                setTimeout(() => {
+                    highlightKey('pent_pianoSvg', midi, 'key-error', false);
+                }, 300);
+            }
+        }
+
+        function pentOnNoteOff(midi) {
+            highlightKey('pent_pianoSvg', midi, 'key-correct', false);
+            highlightKey('pent_pianoSvg', midi, 'key-active', false);
+        }
+
+        function pentShowFeedback(correct) {
+            const float = document.getElementById('pent_feedbackFloat');
+            float.innerText = correct ? '✓' : '✗';
+            float.className = `fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-4xl font-bold pointer-events-none z-50 ${correct ? 'text-green-400' : 'text-red-400'}`;
+            setTimeout(() => { float.classList.add('hidden'); }, 500);
+        }
+
+        function pentEndGame() {
+            pent_isPlaying = false;
+            pent_challenge = null;
+
+            const accuracy = Math.round((pent_firstTryCorrect / pent_config.rounds) * 100);
+            const avgTime = pent_allTimes.length > 0
+                ? pent_allTimes.reduce((a, b) => a + b, 0) / pent_allTimes.length
+                : 0;
+
+            document.getElementById('pent_challengeDisplay').classList.add('hidden');
+            document.getElementById('pent_gameCompleteDisplay').classList.remove('hidden');
+            document.getElementById('pent_finalScore').innerText = `${pent_firstTryCorrect}/${pent_config.rounds}`;
+            document.getElementById('pent_finalAccuracy').innerText = `${accuracy}%`;
+            document.getElementById('pent_finalMistakes').innerText = pent_totalMistakes;
+            document.getElementById('pent_finalAvgTime').innerText = `${avgTime.toFixed(1)}s`;
+
+            if (pent_slowCount > 0) {
+                document.getElementById('pent_finalSlowCount').innerText = `${pent_slowCount} slow response${pent_slowCount > 1 ? 's' : ''} (>2s)`;
+            } else {
+                document.getElementById('pent_finalSlowCount').innerText = '';
+            }
+
+            document.getElementById('pent_slow').innerText = pent_slowCount;
+            document.getElementById('pent_settingsPanel').classList.remove('hidden');
+            document.getElementById('pent_startBtn').innerText = 'Start Game';
+            document.getElementById('pent_startBtn').disabled = false;
+
+            // Save to history
+            const gameRecord = {
+                timestamp: Date.now(),
+                score: pent_firstTryCorrect,
+                totalRounds: pent_config.rounds,
+                accuracy,
+                avgTime,
+                mistakes: pent_totalMistakes,
+                slowCount: pent_slowCount,
+                config: { ...pent_config }
+            };
+            pent_history.unshift(gameRecord);
+            if (pent_history.length > 20) pent_history.pop();
+            localStorage.setItem('pentHistory', JSON.stringify(pent_history));
+
+            // Update cumulative stats
+            pentUpdateCumulativeStats();
+
+            // Show breakdown
+            pentShowBreakdown();
+            pentRenderHistory();
+        }
+
+        function pentShowBreakdown() {
+            const grid = document.getElementById('pent_breakdownGrid');
+            grid.innerHTML = '';
+
+            if (Object.keys(pent_stats).length === 0) {
+                document.getElementById('pent_breakdownSection').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('pent_breakdownSection').classList.remove('hidden');
+
+            const entries = Object.entries(pent_stats).sort((a, b) => {
+                const aRate = a[1].mistakes / a[1].attempts;
+                const bRate = b[1].mistakes / b[1].attempts;
+                return bRate - aRate;
+            });
+
+            entries.forEach(([key, data]) => {
+                const mistakeRate = data.attempts > 0 ? (data.mistakes / data.attempts * 100).toFixed(0) : 0;
+                const avgTime = data.times.length > 0
+                    ? (data.times.reduce((a, b) => a + b, 0) / data.times.length).toFixed(1)
+                    : '--';
+                const isSlow = parseFloat(avgTime) > 2;
+                const hasErrors = data.mistakes > 0;
+
+                const bgClass = hasErrors ? 'bg-red-900/30 border-red-700/50' :
+                               isSlow ? 'bg-yellow-900/30 border-yellow-700/50' :
+                               'bg-slate-700/50 border-slate-600/50';
+
+                grid.innerHTML += `
+                    <div class="p-2 rounded border ${bgClass}">
+                        <div class="font-bold text-white text-sm">${key}</div>
+                        <div class="text-xs text-slate-400">
+                            ${hasErrors ? `<span class="text-red-400">${mistakeRate}% err</span> · ` : ''}
+                            <span class="${isSlow ? 'text-yellow-400' : ''}">${avgTime}s</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function pentLoadHistory() {
+            const saved = localStorage.getItem('pentHistory');
+            if (saved) {
+                try { pent_history = JSON.parse(saved); } catch (e) { pent_history = []; }
+            }
+            const savedStats = localStorage.getItem('pentCumulativeStats');
+            if (savedStats) {
+                try { pent_cumulativeStats = JSON.parse(savedStats); } catch (e) { pent_cumulativeStats = {}; }
+            }
+            pentRenderHistory();
+        }
+
+        function pentUpdateCumulativeStats() {
+            Object.entries(pent_stats).forEach(([key, data]) => {
+                if (!pent_cumulativeStats[key]) {
+                    pent_cumulativeStats[key] = { attempts: 0, mistakes: 0, times: [] };
+                }
+                pent_cumulativeStats[key].attempts += data.attempts;
+                pent_cumulativeStats[key].mistakes += data.mistakes;
+                pent_cumulativeStats[key].times.push(...data.times);
+                if (pent_cumulativeStats[key].times.length > 50) {
+                    pent_cumulativeStats[key].times = pent_cumulativeStats[key].times.slice(-50);
+                }
+            });
+            localStorage.setItem('pentCumulativeStats', JSON.stringify(pent_cumulativeStats));
+        }
+
+        function pentGetProblemAreas() {
+            const dominated = [];
+            Object.entries(pent_cumulativeStats).forEach(([key, data]) => {
+                if (data.attempts >= 2) {
+                    const mistakeRate = data.mistakes / data.attempts;
+                    const avgTime = data.times.length > 0
+                        ? data.times.reduce((a, b) => a + b, 0) / data.times.length
+                        : 0;
+                    if (mistakeRate > 0.3 || avgTime > 3) {
+                        dominated.push({ key, mistakeRate, avgTime, attempts: data.attempts });
+                    }
+                }
+            });
+            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+        }
+
+        function pentRenderHistory() {
+            const content = document.getElementById('pent_historyContent');
+            if (pent_history.length === 0) {
+                content.innerHTML = '<p class="text-slate-500 text-sm">No games played yet.</p>';
+                return;
+            }
+
+            let html = '<h3 class="text-lg font-semibold text-white mb-3">Recent Games</h3>';
+            html += '<div class="space-y-2 max-h-48 overflow-y-auto">';
+
+            const best = pent_history.reduce((best, g) =>
+                (g.accuracy > best.accuracy || (g.accuracy === best.accuracy && g.avgTime < best.avgTime)) ? g : best
+            , pent_history[0]);
+
+            pent_history.slice(0, 10).forEach(game => {
+                const date = new Date(game.timestamp);
+                const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const isTheBest = game === best;
+                const rowClass = isTheBest ? 'bg-yellow-900/30 border border-yellow-700/50' : 'bg-slate-800';
+                const scaleType = game.config?.scaleType || 'all';
+                const displayAccuracy = Math.min(game.accuracy, 100);
+                const slowCount = game.slowCount || 0;
+                const slowStr = slowCount > 0 ? `<span class="text-yellow-400 text-xs ml-1">${slowCount}s</span>` : '';
+
+                html += `<div class="flex justify-between items-center text-sm p-2 ${rowClass} rounded">
+                    <div><span class="text-slate-400">${timeStr}</span><span class="text-xs text-slate-500 ml-2">${game.totalRounds}r</span><span class="text-xs text-blue-400 ml-1">${scaleType}</span></div>
+                    <div><span class="font-bold ${displayAccuracy >= 80 ? 'text-green-400' : displayAccuracy >= 60 ? 'text-yellow-400' : 'text-red-400'}">${displayAccuracy}%</span><span class="text-slate-500 text-xs ml-1">(${game.avgTime.toFixed(1)}s)</span>${slowStr}${isTheBest ? '<span class="text-yellow-400 ml-1">★</span>' : ''}</div>
+                </div>`;
+            });
+            html += '</div>';
+
+            // Problem areas
+            const problemAreas = pentGetProblemAreas();
+            if (problemAreas.length > 0) {
+                html += `<div class="border-t border-slate-700 pt-3 mt-3">
+                    <p class="text-xs text-slate-400 mb-2">Problem Areas</p>
+                    <div class="flex flex-wrap gap-2">`;
+                problemAreas.forEach(area => {
+                    html += `<span class="px-2 py-1 bg-red-900/30 border border-red-700/50 rounded text-xs">
+                        ${area.key} <span class="text-red-400">${(area.mistakeRate * 100).toFixed(0)}%</span>
+                    </span>`;
+                });
+                html += '</div></div>';
+            }
+
+            content.innerHTML = html;
+        }
+
         // ============ SETTINGS PERSISTENCE ============
         function saveAllSettings() {
             const settings = {
@@ -8621,6 +9139,11 @@
                 rootless251: {
                     rounds: document.getElementById('r251_roundsSelect').value,
                     showHints: document.getElementById('r251_showHints').checked
+                },
+                pentatonic: {
+                    scaleType: document.getElementById('pent_scaleTypeSelect').value,
+                    rounds: document.getElementById('pent_roundsSelect').value,
+                    showHints: document.getElementById('pent_showHints').checked
                 }
             };
             localStorage.setItem('pianoTutorSettings', JSON.stringify(settings));
@@ -8727,6 +9250,13 @@
                     if (settings.rootless251.rounds) document.getElementById('r251_roundsSelect').value = settings.rootless251.rounds;
                     if (settings.rootless251.showHints !== undefined) document.getElementById('r251_showHints').checked = settings.rootless251.showHints;
                 }
+
+                // Pentatonic & Blues
+                if (settings.pentatonic) {
+                    if (settings.pentatonic.scaleType) document.getElementById('pent_scaleTypeSelect').value = settings.pentatonic.scaleType;
+                    if (settings.pentatonic.rounds) document.getElementById('pent_roundsSelect').value = settings.pentatonic.rounds;
+                    if (settings.pentatonic.showHints !== undefined) document.getElementById('pent_showHints').checked = settings.pentatonic.showHints;
+                }
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }
@@ -8747,6 +9277,7 @@
         drawPiano('dom7v_pianoSvg');
         drawPiano('extv_pianoSvg');
         drawPiano('r251_pianoSvg');
+        drawPiano('pent_pianoSvg');
         initMIDI();
         intLoadHistory();
         chLoadHistory();
@@ -8769,6 +9300,7 @@
         dom7vLoadHistory();
         extvLoadHistory();
         r251LoadHistory();
+        pentLoadHistory();
         loadAllSettings();
         document.getElementById('jtou_voicingSelect').addEventListener('change', function() {
             const hint = document.getElementById('jtou_settingsHint');
@@ -8778,7 +9310,7 @@
                 hint.innerText = 'The classic Grover Washington Jr. / Bill Withers progression. In Fm: Dbmaj9 → C7#9 → Fm9';
             }
         });
-        window.addEventListener('resize', () => { drawPiano('previewPianoSvg'); drawPiano('pianoSvg'); drawPiano('ch_pianoSvg'); drawPiano('iivi_pianoSvg'); drawPiano('sc_pianoSvg'); drawPiano('ext_pianoSvg'); drawPiano('alt_pianoSvg'); drawPiano('adv_pianoSvg'); drawPiano('miivi_pianoSvg'); drawPiano('kb_pianoSvg'); drawPiano('jtou_pianoSvg'); drawPiano('dom7v_pianoSvg'); drawPiano('extv_pianoSvg'); drawPiano('r251_pianoSvg'); });
+        window.addEventListener('resize', () => { drawPiano('previewPianoSvg'); drawPiano('pianoSvg'); drawPiano('ch_pianoSvg'); drawPiano('iivi_pianoSvg'); drawPiano('sc_pianoSvg'); drawPiano('ext_pianoSvg'); drawPiano('alt_pianoSvg'); drawPiano('adv_pianoSvg'); drawPiano('miivi_pianoSvg'); drawPiano('kb_pianoSvg'); drawPiano('jtou_pianoSvg'); drawPiano('dom7v_pianoSvg'); drawPiano('extv_pianoSvg'); drawPiano('r251_pianoSvg'); drawPiano('pent_pianoSvg'); });
     </script>
 </body>
 </html>

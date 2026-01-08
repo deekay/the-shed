@@ -39,6 +39,7 @@ A web-based interactive training app for learning jazz piano fundamentals. Pract
 
 ### Scales
 13. **Jazz Scales** - Scales that work over each chord type
+14. **Pentatonic** - Minor pentatonic, major pentatonic, and blues scales
 
 ## Getting Started
 
