@@ -136,6 +136,9 @@
                 <button id="pentMode" onclick="switchMode('pent')" title="Pentatonic and blues scales: minor pentatonic, major pentatonic, and blues scale in all 12 keys" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
                     14. Pentatonic
                 </button>
+                <button id="bebopMode" onclick="switchMode('bebop')" title="Bebop scales: 8-note scales with chromatic passing tones for smooth jazz lines" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
+                    15. Bebop
+                </button>
             </div>
         </div>
 
@@ -175,7 +178,7 @@
                     </div>
                     <div>
                         <div class="text-xs text-slate-500 uppercase tracking-wide mb-1">Scales</div>
-                        <p><strong>13-14:</strong> Jazz scales over chord types, pentatonic & blues scales</p>
+                        <p><strong>13-15:</strong> Jazz scales, pentatonic & blues, bebop scales</p>
                     </div>
                 </div>
                 <p class="text-xs text-slate-500 mt-4">Hover over any mode button for a description.</p>
@@ -209,6 +212,38 @@
                     </div>
                     <div class="pt-2 border-t border-slate-700">
                         <p class="text-xs text-slate-500">Tip: Start with minor pentatonic - it works over most chord types and is hard to make sound "wrong."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jazz Scales Info Modal -->
+        <div id="scalesInfoModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+            <div class="bg-slate-800 rounded-lg p-6 max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white">When to Use These Scales</h3>
+                    <button onclick="document.getElementById('scalesInfoModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="text-sm text-slate-300 space-y-4">
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Lydian (over Maj7)</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - 3 - #4 - 5 - 6 - 7</p>
+                        <p>The #4 avoids the "avoid note" (natural 4) that clashes with the major 3rd. Gives a bright, modern sound. Use over any <strong>major 7th chord</strong>, especially when it's not the I chord.</p>
+                    </div>
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Dorian (over Min7)</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - b3 - 4 - 5 - 6 - b7</p>
+                        <p>The natural 6 (instead of b6) gives a lighter, jazzier sound than natural minor. The default choice for <strong>minor 7th chords</strong>, especially the ii chord in a ii-V-I.</p>
+                    </div>
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Lydian Dominant (over Dom7)</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - 3 - #4 - 5 - 6 - b7</p>
+                        <p>Mixolydian with a #4. Works over <strong>dominant 7th chords</strong> that don't resolve down a 5th (like bVII7, IV7, or tritone subs). The #4 adds color without clashing.</p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-700">
+                        <p class="text-xs text-slate-500">Tip: These scales follow the "chord tone + whole step" principle - each note is either a chord tone (1-3-5-7) or a whole step above one.</p>
                     </div>
                 </div>
             </div>
@@ -686,7 +721,12 @@
             <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-white mb-1">Jazz Scales</h2>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h2 class="text-xl font-semibold text-white">Jazz Scales</h2>
+                            <button onclick="document.getElementById('scalesInfoModal').classList.remove('hidden')" class="text-slate-400 hover:text-white transition" title="When to use these scales">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
                         <p class="text-sm text-slate-400">Play scales using the <span class="text-blue-400">chord tone + whole step</span> principle</p>
                     </div>
                     <div class="text-right">
@@ -2328,6 +2368,150 @@
             </div>
         </div>
 
+        <!-- ==================== BEBOP SCALES MODE ==================== -->
+        <div id="bebopPanel" class="mode-panel hidden">
+            <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h2 class="text-xl font-semibold text-white">Bebop Scales</h2>
+                            <button onclick="document.getElementById('bebopInfoModal').classList.remove('hidden')" class="text-slate-400 hover:text-white transition" title="When to use bebop scales">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
+                        <p class="text-sm text-slate-400">8-note scales with <span class="text-blue-400">chromatic passing tones</span> for smooth jazz lines</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-slate-400">Avg Time</p>
+                        <p id="bebop_responseTime" class="text-2xl font-mono timer-fast">--</p>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div id="bebop_settingsPanel" class="mb-6 p-4 bg-slate-900 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Scale Type:</label>
+                            <select id="bebop_scaleTypeSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="all">All Types</option>
+                                <option value="dominant">Bebop Dominant only</option>
+                                <option value="major">Bebop Major only</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Rounds:</label>
+                            <select id="bebop_roundsSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="6">6</option>
+                                <option value="12" selected>12</option>
+                                <option value="24">24</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 ml-4">
+                            <input type="checkbox" id="bebop_showHints" class="w-4 h-4 rounded bg-slate-700 border-slate-600">
+                            <label for="bebop_showHints" class="text-sm text-slate-400">Show hints</label>
+                        </div>
+                    </div>
+                    <p id="bebop_settingsHint" class="text-xs text-slate-500 mt-3">Dominant: 1 2 3 4 5 6 b7 7 | Major: 1 2 3 4 5 #5 6 7</p>
+                </div>
+
+                <!-- Challenge Display -->
+                <div id="bebop_challengeDisplay" class="mb-6 p-8 bg-slate-900 rounded-lg text-center hidden">
+                    <p class="text-slate-400 mb-2">Play the scale</p>
+                    <p class="text-5xl font-bold text-white mb-2" id="bebop_rootDisplay">C</p>
+                    <p class="text-2xl text-blue-400 mb-4" id="bebop_scaleNameDisplay">Bebop Dominant</p>
+
+                    <!-- Scale progress indicator (dynamic - 8 notes) -->
+                    <div class="flex justify-center items-center gap-2 mb-4" id="bebop_noteProgress"></div>
+
+                    <p id="bebop_hint" class="text-sm text-slate-500 hidden"></p>
+                    <p id="bebop_feedbackText" class="text-lg font-semibold h-7"></p>
+                </div>
+
+                <!-- Game Complete Display -->
+                <div id="bebop_completeDisplay" class="mb-6 p-8 bg-slate-900 rounded-lg text-center hidden">
+                    <h3 class="text-3xl font-bold text-green-400 mb-4">Practice Complete!</h3>
+                    <div class="grid grid-cols-5 gap-4 mb-4 text-center">
+                        <div>
+                            <p class="text-slate-400 text-sm">Rounds</p>
+                            <p id="bebop_finalRounds" class="text-2xl font-bold text-white">12</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Avg Time</p>
+                            <p id="bebop_finalAvgTime" class="text-2xl font-bold text-white">--</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">1st Try</p>
+                            <p id="bebop_finalFirstTry" class="text-2xl font-bold text-white">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Mistakes</p>
+                            <p id="bebop_finalMistakes" class="text-2xl font-bold text-white">0</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Slow</p>
+                            <p id="bebop_finalSlow" class="text-2xl font-bold text-white">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Piano Container -->
+                <div class="flex justify-center mb-6">
+                    <svg id="bebop_pianoSvg" viewBox="0 0 700 150" class="max-w-full h-auto"></svg>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex flex-wrap gap-4 justify-center items-center">
+                    <button id="bebop_startBtn" onclick="bebopStartGame()" class="px-6 py-3 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition">
+                        Start Practice
+                    </button>
+                    <div class="text-slate-400">
+                        Round: <span id="bebop_roundDisplay">0</span> / <span id="bebop_totalRounds">12</span>
+                    </div>
+                    <div class="flex gap-2 text-sm">
+                        <span class="text-green-400">1st Try: <span id="bebop_firstTry">0%</span></span>
+                        <span>Mistakes: <span id="bebop_mistakes">0</span></span>
+                        <span>Slow: <span id="bebop_slow">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div id="bebop_historyContent" class="bg-slate-800 rounded-lg p-6 shadow-lg mb-6"></div>
+
+            <!-- Breakdown Section -->
+            <div id="bebop_breakdownSection" class="bg-slate-800 rounded-lg p-6 shadow-lg hidden">
+                <h2 class="text-xl font-semibold mb-4 text-white">Scale Breakdown</h2>
+                <div id="bebop_breakdownGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2"></div>
+            </div>
+        </div>
+
+        <!-- Bebop Scales Info Modal -->
+        <div id="bebopInfoModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+            <div class="bg-slate-800 rounded-lg p-6 max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white">When to Use Bebop Scales</h3>
+                    <button onclick="document.getElementById('bebopInfoModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="text-sm text-slate-300 space-y-4">
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Bebop Dominant</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - 3 - 4 - 5 - 6 - b7 - 7</p>
+                        <p>Mixolydian with a passing tone (natural 7) between b7 and root. Use over <strong>dominant 7th chords</strong>. When you play 8th notes starting on a downbeat, all chord tones (1-3-5-b7) land on downbeats automatically.</p>
+                    </div>
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Bebop Major</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - 3 - 4 - 5 - #5 - 6 - 7</p>
+                        <p>Major scale with a passing tone (#5) between 5 and 6. Use over <strong>major 7th chords</strong>. The #5 adds chromatic movement while keeping chord tones on strong beats.</p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-700">
+                        <p class="text-xs text-slate-500">Tip: The magic of bebop scales is the 8 notes - when playing continuous 8th notes, chord tones automatically fall on downbeats, creating strong harmonic clarity.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center text-slate-500 text-sm mt-8 pt-4 border-t border-slate-700">
             Feedback? DM <a href="https://twitter.com/dksf" target="_blank" class="text-blue-400 hover:text-blue-300">@dksf</a> on Twitter/X
@@ -2359,8 +2543,8 @@
         function switchMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            const modeButtons = { intervals: 'intervalsMode', chords: 'chordsMode', iivi: 'iiviMode', scales: 'scalesMode', ext: 'extMode', alt: 'altMode', adv: 'advMode', minorIivi: 'minorIiviMode', kb: 'kbMode', jtou: 'jtouMode', dom7v: 'dom7vMode', extv: 'extvMode', r251: 'r251Mode', pent: 'pentMode' };
-            const modePanels = { intervals: 'intervalsPanel', chords: 'chordsPanel', iivi: 'iiviPanel', scales: 'scalesPanel', ext: 'extPanel', alt: 'altPanel', adv: 'advPanel', minorIivi: 'minorIiviPanel', kb: 'kbPanel', jtou: 'jtouPanel', dom7v: 'dom7vPanel', extv: 'extvPanel', r251: 'r251Panel', pent: 'pentPanel' };
+            const modeButtons = { intervals: 'intervalsMode', chords: 'chordsMode', iivi: 'iiviMode', scales: 'scalesMode', ext: 'extMode', alt: 'altMode', adv: 'advMode', minorIivi: 'minorIiviMode', kb: 'kbMode', jtou: 'jtouMode', dom7v: 'dom7vMode', extv: 'extvMode', r251: 'r251Mode', pent: 'pentMode', bebop: 'bebopMode' };
+            const modePanels = { intervals: 'intervalsPanel', chords: 'chordsPanel', iivi: 'iiviPanel', scales: 'scalesPanel', ext: 'extPanel', alt: 'altPanel', adv: 'advPanel', minorIivi: 'minorIiviPanel', kb: 'kbPanel', jtou: 'jtouPanel', dom7v: 'dom7vPanel', extv: 'extvPanel', r251: 'r251Panel', pent: 'pentPanel', bebop: 'bebopPanel' };
             document.getElementById(modeButtons[mode]).classList.add('active');
             document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.add('hidden'));
             document.getElementById(modePanels[mode]).classList.remove('hidden');
@@ -2521,6 +2705,7 @@
                 else if (currentMode === 'extv') extvOnNoteOn(note);
                 else if (currentMode === 'r251') r251OnNoteOn(note);
                 else if (currentMode === 'pent') pentOnNoteOn(note);
+                else if (currentMode === 'bebop') bebopOnNoteOn(note);
             } else if ((cmd & 0xF0) === 128 || ((cmd & 0xF0) === 144 && vel === 0)) {
                 heldNotes.delete(note);
                 // Clear preview piano highlight
@@ -2539,6 +2724,7 @@
                 else if (currentMode === 'extv') extvOnNoteOff(note);
                 else if (currentMode === 'r251') r251OnNoteOff(note);
                 else if (currentMode === 'pent') pentOnNoteOff(note);
+                else if (currentMode === 'bebop') bebopOnNoteOff(note);
             }
         }
 
@@ -9110,6 +9296,358 @@
             content.innerHTML = html;
         }
 
+        // ============ BEBOP SCALES MODE ============
+        const BEBOP_SCALES = {
+            'dominant': {
+                name: 'Bebop Dominant',
+                intervals: [0, 2, 4, 5, 7, 9, 10, 11], // 1 2 3 4 5 6 b7 7
+                degrees: ['1', '2', '3', '4', '5', '6', 'b7', '7']
+            },
+            'major': {
+                name: 'Bebop Major',
+                intervals: [0, 2, 4, 5, 7, 8, 9, 11], // 1 2 3 4 5 #5 6 7
+                degrees: ['1', '2', '3', '4', '5', '#5', '6', '7']
+            }
+        };
+
+        let bebop_isPlaying = false;
+        let bebop_challenge = null;
+        let bebop_challengeStartTime = null;
+        let bebop_config = null;
+        let bebop_currentRound = 0;
+        let bebop_firstTryCorrect = 0;
+        let bebop_totalMistakes = 0;
+        let bebop_roundHadMistake = false;
+        let bebop_stats = {};
+        let bebop_allTimes = [];
+        let bebop_slowCount = 0;
+        let bebop_history = [];
+        let bebop_cumulativeStats = {};
+        let bebop_currentNoteIndex = 0;
+
+        function bebopStartGame() {
+            const scaleType = document.getElementById('bebop_scaleTypeSelect').value;
+            const rounds = parseInt(document.getElementById('bebop_roundsSelect').value);
+            const showHints = document.getElementById('bebop_showHints').checked;
+
+            let scaleTypes = [];
+            if (scaleType === 'all') {
+                scaleTypes = Object.keys(BEBOP_SCALES);
+            } else {
+                scaleTypes = [scaleType];
+            }
+
+            bebop_config = { scaleTypes, rounds, showHints };
+            bebop_currentRound = 0;
+            bebop_firstTryCorrect = 0;
+            bebop_totalMistakes = 0;
+            bebop_stats = {};
+            bebop_allTimes = [];
+            bebop_slowCount = 0;
+            bebop_isPlaying = true;
+
+            document.getElementById('bebop_settingsPanel').classList.add('hidden');
+            document.getElementById('bebop_challengeDisplay').classList.remove('hidden');
+            document.getElementById('bebop_completeDisplay').classList.add('hidden');
+            document.getElementById('bebop_startBtn').textContent = 'Stop Practice';
+            document.getElementById('bebop_startBtn').onclick = bebopStopGame;
+            document.getElementById('bebop_totalRounds').textContent = rounds;
+            document.getElementById('bebop_firstTry').textContent = '0%';
+            document.getElementById('bebop_mistakes').textContent = '0';
+            document.getElementById('bebop_slow').textContent = '0';
+            document.getElementById('bebop_responseTime').textContent = '--';
+
+            bebopNextChallenge();
+        }
+
+        function bebopStopGame() {
+            bebop_isPlaying = false;
+            document.getElementById('bebop_settingsPanel').classList.remove('hidden');
+            document.getElementById('bebop_challengeDisplay').classList.add('hidden');
+            document.getElementById('bebop_startBtn').textContent = 'Start Practice';
+            document.getElementById('bebop_startBtn').onclick = bebopStartGame;
+            clearPiano('bebop_pianoSvg');
+        }
+
+        function bebopNextChallenge() {
+            if (bebop_currentRound >= bebop_config.rounds) {
+                bebopEndGame();
+                return;
+            }
+
+            bebop_currentRound++;
+            bebop_roundHadMistake = false;
+            bebop_currentNoteIndex = 0;
+
+            // Pick random root and scale type
+            const root = Math.floor(Math.random() * 12);
+            const scaleType = bebop_config.scaleTypes[Math.floor(Math.random() * bebop_config.scaleTypes.length)];
+            const scale = BEBOP_SCALES[scaleType];
+
+            // Calculate the expected notes in order (ascending from root)
+            const expectedNotes = scale.intervals.map(interval => (root + interval) % 12);
+
+            bebop_challenge = {
+                root,
+                scaleType,
+                scaleName: scale.name,
+                expectedNotes,
+                degrees: scale.degrees
+            };
+
+            // Update display
+            document.getElementById('bebop_rootDisplay').textContent = NOTE_NAMES[root];
+            document.getElementById('bebop_scaleNameDisplay').textContent = scale.name;
+            document.getElementById('bebop_roundDisplay').textContent = bebop_currentRound;
+            document.getElementById('bebop_feedbackText').textContent = '';
+            document.getElementById('bebop_feedbackText').className = 'text-lg font-semibold h-7';
+
+            // Build note progress indicators (8 notes for bebop)
+            const progressDiv = document.getElementById('bebop_noteProgress');
+            progressDiv.innerHTML = '';
+            for (let i = 0; i < 8; i++) {
+                const noteDiv = document.createElement('div');
+                noteDiv.id = `bebop_note_${i}`;
+                noteDiv.className = 'w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-sm font-bold border-2 border-slate-600';
+                if (bebop_config.showHints) {
+                    noteDiv.innerHTML = `<span class="bebop-hint">${scale.degrees[i]}</span>`;
+                }
+                progressDiv.appendChild(noteDiv);
+            }
+
+            // Hint
+            const hintEl = document.getElementById('bebop_hint');
+            if (bebop_config.showHints) {
+                const noteNames = expectedNotes.map(pc => NOTE_NAMES[pc]);
+                hintEl.textContent = noteNames.join(' - ');
+                hintEl.classList.remove('hidden');
+            } else {
+                hintEl.classList.add('hidden');
+            }
+
+            clearPiano('bebop_pianoSvg');
+            bebop_challengeStartTime = Date.now();
+        }
+
+        function bebopOnNoteOn(midi) {
+            if (!bebop_isPlaying || !bebop_challenge) return;
+
+            const pitchClass = midi % 12;
+            const expectedPitchClass = bebop_challenge.expectedNotes[bebop_currentNoteIndex];
+
+            if (pitchClass === expectedPitchClass) {
+                // Correct note
+                highlightKey('bebop_pianoSvg', midi, 'correct');
+                const noteDiv = document.getElementById(`bebop_note_${bebop_currentNoteIndex}`);
+                if (noteDiv) {
+                    noteDiv.classList.remove('bg-slate-700', 'border-slate-600');
+                    noteDiv.classList.add('bg-green-600', 'border-green-400');
+                }
+                bebop_currentNoteIndex++;
+
+                // Check if scale complete
+                if (bebop_currentNoteIndex >= bebop_challenge.expectedNotes.length) {
+                    const elapsed = Date.now() - bebop_challengeStartTime;
+                    const isSlow = elapsed > 4000; // 4 seconds for 8 notes
+
+                    if (!bebop_roundHadMistake) {
+                        bebop_firstTryCorrect++;
+                    }
+                    if (isSlow) {
+                        bebop_slowCount++;
+                    }
+
+                    bebop_allTimes.push(elapsed);
+
+                    // Track stats
+                    const key = `${NOTE_NAMES[bebop_challenge.root]} ${bebop_challenge.scaleName}`;
+                    if (!bebop_stats[key]) {
+                        bebop_stats[key] = { attempts: 0, mistakes: 0, times: [], root: bebop_challenge.root, scaleType: bebop_challenge.scaleType };
+                    }
+                    bebop_stats[key].attempts++;
+                    if (bebop_roundHadMistake) bebop_stats[key].mistakes++;
+                    bebop_stats[key].times.push(elapsed);
+
+                    // Update display
+                    const firstTryPct = Math.round((bebop_firstTryCorrect / bebop_currentRound) * 100);
+                    document.getElementById('bebop_firstTry').textContent = firstTryPct + '%';
+                    document.getElementById('bebop_slow').textContent = bebop_slowCount;
+
+                    const avgTime = bebop_allTimes.reduce((a, b) => a + b, 0) / bebop_allTimes.length;
+                    const avgSec = (avgTime / 1000).toFixed(1);
+                    document.getElementById('bebop_responseTime').textContent = avgSec + 's';
+                    document.getElementById('bebop_responseTime').className = `text-2xl font-mono ${avgTime < 4000 ? 'timer-fast' : 'timer-slow'}`;
+
+                    document.getElementById('bebop_feedbackText').textContent = isSlow ? 'Slow' : 'Nice!';
+                    document.getElementById('bebop_feedbackText').className = `text-lg font-semibold h-7 ${isSlow ? 'text-yellow-400' : 'text-green-400'}`;
+
+                    setTimeout(bebopNextChallenge, 800);
+                }
+            } else {
+                // Wrong note
+                highlightKey('bebop_pianoSvg', midi, 'incorrect');
+                if (!bebop_roundHadMistake) {
+                    bebop_roundHadMistake = true;
+                    bebop_totalMistakes++;
+                    document.getElementById('bebop_mistakes').textContent = bebop_totalMistakes;
+                }
+                document.getElementById('bebop_feedbackText').textContent = 'Try again';
+                document.getElementById('bebop_feedbackText').className = 'text-lg font-semibold h-7 text-red-400';
+            }
+        }
+
+        function bebopOnNoteOff(midi) {
+            clearKeyHighlight('bebop_pianoSvg', midi);
+        }
+
+        function bebopEndGame() {
+            bebop_isPlaying = false;
+
+            document.getElementById('bebop_challengeDisplay').classList.add('hidden');
+            document.getElementById('bebop_completeDisplay').classList.remove('hidden');
+            document.getElementById('bebop_startBtn').textContent = 'Start Practice';
+            document.getElementById('bebop_startBtn').onclick = bebopStartGame;
+            document.getElementById('bebop_settingsPanel').classList.remove('hidden');
+
+            // Final stats
+            const avgTime = bebop_allTimes.length > 0 ? bebop_allTimes.reduce((a, b) => a + b, 0) / bebop_allTimes.length : 0;
+            const avgSec = (avgTime / 1000).toFixed(1);
+            const firstTryPct = Math.round((bebop_firstTryCorrect / bebop_config.rounds) * 100);
+
+            document.getElementById('bebop_finalRounds').textContent = bebop_config.rounds;
+            document.getElementById('bebop_finalAvgTime').textContent = avgSec + 's';
+            document.getElementById('bebop_finalFirstTry').textContent = firstTryPct + '%';
+            document.getElementById('bebop_finalMistakes').textContent = bebop_totalMistakes;
+            document.getElementById('bebop_finalSlow').textContent = bebop_slowCount;
+
+            // Save to history
+            const gameRecord = {
+                date: new Date().toISOString(),
+                rounds: bebop_config.rounds,
+                avgTime,
+                firstTryPct,
+                mistakes: bebop_totalMistakes,
+                slow: bebop_slowCount,
+                scaleTypes: bebop_config.scaleTypes,
+                stats: bebop_stats
+            };
+            bebop_history.unshift(gameRecord);
+            if (bebop_history.length > 20) bebop_history.pop();
+            localStorage.setItem('bebop_history', JSON.stringify(bebop_history));
+
+            bebopUpdateCumulativeStats();
+            bebopShowBreakdown();
+            bebopRenderHistory();
+            clearPiano('bebop_pianoSvg');
+        }
+
+        function bebopShowBreakdown() {
+            const grid = document.getElementById('bebop_breakdownGrid');
+            grid.innerHTML = '';
+
+            const sortedKeys = Object.keys(bebop_stats).sort((a, b) => {
+                const aRate = bebop_stats[a].mistakes / bebop_stats[a].attempts;
+                const bRate = bebop_stats[b].mistakes / bebop_stats[b].attempts;
+                return bRate - aRate;
+            });
+
+            sortedKeys.forEach(key => {
+                const stat = bebop_stats[key];
+                const avgTime = stat.times.reduce((a, b) => a + b, 0) / stat.times.length;
+                const accuracy = Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100);
+                const isSlow = avgTime > 4000;
+
+                const card = document.createElement('div');
+                card.className = `p-3 rounded-lg ${stat.mistakes > 0 ? 'bg-red-900/30 border border-red-700/50' : 'bg-slate-700'}`;
+                card.innerHTML = `
+                    <div class="font-semibold text-white">${key}</div>
+                    <div class="text-sm ${stat.mistakes > 0 ? 'text-red-400' : 'text-green-400'}">${accuracy}% accuracy</div>
+                    <div class="text-xs ${isSlow ? 'text-yellow-400' : 'text-slate-400'}">${(avgTime / 1000).toFixed(1)}s avg</div>
+                `;
+                grid.appendChild(card);
+            });
+
+            document.getElementById('bebop_breakdownSection').classList.remove('hidden');
+        }
+
+        function bebopLoadHistory() {
+            const saved = localStorage.getItem('bebop_history');
+            if (saved) {
+                bebop_history = JSON.parse(saved);
+            }
+            const cumSaved = localStorage.getItem('bebop_cumulativeStats');
+            if (cumSaved) {
+                bebop_cumulativeStats = JSON.parse(cumSaved);
+            }
+            bebopRenderHistory();
+        }
+
+        function bebopUpdateCumulativeStats() {
+            Object.keys(bebop_stats).forEach(key => {
+                const stat = bebop_stats[key];
+                if (!bebop_cumulativeStats[key]) {
+                    bebop_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
+                }
+                bebop_cumulativeStats[key].attempts += stat.attempts;
+                bebop_cumulativeStats[key].mistakes += stat.mistakes;
+            });
+            localStorage.setItem('bebop_cumulativeStats', JSON.stringify(bebop_cumulativeStats));
+        }
+
+        function bebopGetProblemAreas() {
+            const dominated = [];
+            Object.keys(bebop_cumulativeStats).forEach(key => {
+                const stat = bebop_cumulativeStats[key];
+                if (stat.attempts >= 3) {
+                    const mistakeRate = stat.mistakes / stat.attempts;
+                    if (mistakeRate > 0.3) {
+                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
+                    }
+                }
+            });
+            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+        }
+
+        function bebopRenderHistory() {
+            const content = document.getElementById('bebop_historyContent');
+            if (bebop_history.length === 0) {
+                content.innerHTML = '<h2 class="text-xl font-semibold mb-4 text-white">History</h2><p class="text-slate-400">No games played yet.</p>';
+                return;
+            }
+
+            let html = '<h2 class="text-xl font-semibold mb-4 text-white">History</h2>';
+            html += '<div class="space-y-2">';
+
+            bebop_history.slice(0, 5).forEach(game => {
+                const date = new Date(game.date).toLocaleDateString();
+                const avgSec = (game.avgTime / 1000).toFixed(1);
+                html += `<div class="flex justify-between items-center p-2 bg-slate-700 rounded">
+                    <span class="text-slate-400">${date}</span>
+                    <span class="text-white">${game.rounds} rounds</span>
+                    <span class="${game.avgTime < 4000 ? 'text-green-400' : 'text-yellow-400'}">${avgSec}s</span>
+                    <span class="text-green-400">${game.firstTryPct}%</span>
+                </div>`;
+            });
+
+            html += '</div>';
+
+            // Problem areas
+            const problemAreas = bebopGetProblemAreas();
+            if (problemAreas.length > 0) {
+                html += `<div class="border-t border-slate-700 pt-3 mt-3">
+                    <p class="text-xs text-slate-400 mb-2">Problem Areas</p>
+                    <div class="flex flex-wrap gap-2">`;
+                problemAreas.forEach(area => {
+                    html += `<span class="px-2 py-1 bg-red-900/30 border border-red-700/50 rounded text-xs">
+                        ${area.key} <span class="text-red-400">${(area.mistakeRate * 100).toFixed(0)}%</span>
+                    </span>`;
+                });
+                html += '</div></div>';
+            }
+
+            content.innerHTML = html;
+        }
+
         // ============ SETTINGS PERSISTENCE ============
         function saveAllSettings() {
             const settings = {
@@ -9181,6 +9719,11 @@
                     scaleType: document.getElementById('pent_scaleTypeSelect').value,
                     rounds: document.getElementById('pent_roundsSelect').value,
                     showHints: document.getElementById('pent_showHints').checked
+                },
+                bebop: {
+                    scaleType: document.getElementById('bebop_scaleTypeSelect').value,
+                    rounds: document.getElementById('bebop_roundsSelect').value,
+                    showHints: document.getElementById('bebop_showHints').checked
                 }
             };
             localStorage.setItem('pianoTutorSettings', JSON.stringify(settings));
@@ -9294,6 +9837,13 @@
                     if (settings.pentatonic.rounds) document.getElementById('pent_roundsSelect').value = settings.pentatonic.rounds;
                     if (settings.pentatonic.showHints !== undefined) document.getElementById('pent_showHints').checked = settings.pentatonic.showHints;
                 }
+
+                // Bebop Scales
+                if (settings.bebop) {
+                    if (settings.bebop.scaleType) document.getElementById('bebop_scaleTypeSelect').value = settings.bebop.scaleType;
+                    if (settings.bebop.rounds) document.getElementById('bebop_roundsSelect').value = settings.bebop.rounds;
+                    if (settings.bebop.showHints !== undefined) document.getElementById('bebop_showHints').checked = settings.bebop.showHints;
+                }
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }
@@ -9315,6 +9865,7 @@
         drawPiano('extv_pianoSvg');
         drawPiano('r251_pianoSvg');
         drawPiano('pent_pianoSvg');
+        drawPiano('bebop_pianoSvg');
         initMIDI();
         intLoadHistory();
         chLoadHistory();
@@ -9338,6 +9889,7 @@
         extvLoadHistory();
         r251LoadHistory();
         pentLoadHistory();
+        bebopLoadHistory();
         loadAllSettings();
         document.getElementById('jtou_voicingSelect').addEventListener('change', function() {
             const hint = document.getElementById('jtou_settingsHint');
@@ -9347,7 +9899,7 @@
                 hint.innerText = 'The classic Grover Washington Jr. / Bill Withers progression. In Fm: Dbmaj9 → C7#9 → Fm9';
             }
         });
-        window.addEventListener('resize', () => { drawPiano('previewPianoSvg'); drawPiano('pianoSvg'); drawPiano('ch_pianoSvg'); drawPiano('iivi_pianoSvg'); drawPiano('sc_pianoSvg'); drawPiano('ext_pianoSvg'); drawPiano('alt_pianoSvg'); drawPiano('adv_pianoSvg'); drawPiano('miivi_pianoSvg'); drawPiano('kb_pianoSvg'); drawPiano('jtou_pianoSvg'); drawPiano('dom7v_pianoSvg'); drawPiano('extv_pianoSvg'); drawPiano('r251_pianoSvg'); drawPiano('pent_pianoSvg'); });
+        window.addEventListener('resize', () => { drawPiano('previewPianoSvg'); drawPiano('pianoSvg'); drawPiano('ch_pianoSvg'); drawPiano('iivi_pianoSvg'); drawPiano('sc_pianoSvg'); drawPiano('ext_pianoSvg'); drawPiano('alt_pianoSvg'); drawPiano('adv_pianoSvg'); drawPiano('miivi_pianoSvg'); drawPiano('kb_pianoSvg'); drawPiano('jtou_pianoSvg'); drawPiano('dom7v_pianoSvg'); drawPiano('extv_pianoSvg'); drawPiano('r251_pianoSvg'); drawPiano('pent_pianoSvg'); drawPiano('bebop_pianoSvg'); });
     </script>
 </body>
 </html>

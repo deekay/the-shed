@@ -7,7 +7,7 @@ A web-based interactive training app for learning jazz piano fundamentals. Pract
 ## Features
 
 - **MIDI keyboard support** - Connect any MIDI keyboard for real-time practice
-- **13 practice modes** - Progressive curriculum from basics to advanced voicings
+- **15 practice modes** - Progressive curriculum from basics to advanced voicings
 - **Performance tracking** - Stats, response times, and problem area identification
 - **No installation required** - Runs entirely in the browser
 
@@ -40,6 +40,7 @@ A web-based interactive training app for learning jazz piano fundamentals. Pract
 ### Scales
 13. **Jazz Scales** - Scales that work over each chord type
 14. **Pentatonic** - Minor pentatonic, major pentatonic, and blues scales
+15. **Bebop** - Bebop dominant and bebop major scales (8-note scales)
 
 ## Getting Started
 
