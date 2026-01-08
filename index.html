@@ -182,6 +182,38 @@
             </div>
         </div>
 
+        <!-- Pentatonic & Blues Info Modal -->
+        <div id="pentInfoModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+            <div class="bg-slate-800 rounded-lg p-6 max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white">When to Use These Scales</h3>
+                    <button onclick="document.getElementById('pentInfoModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="text-sm text-slate-300 space-y-4">
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Minor Pentatonic</div>
+                        <p class="text-slate-400 mb-2">1 - b3 - 4 - 5 - b7</p>
+                        <p>Works over <strong>minor chords</strong> (m7, m9) and <strong>dominant 7th chords</strong> in a blues context. The most versatile "safe" scale for improvisation. Example: A minor pentatonic over Am7 or A7 in blues.</p>
+                    </div>
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Major Pentatonic</div>
+                        <p class="text-slate-400 mb-2">1 - 2 - 3 - 5 - 6</p>
+                        <p>Works over <strong>major chords</strong> (maj7, 6/9) and gives a bright, "country" sound. Also works over dominant 7th chords for a sweeter feel. Example: C major pentatonic over Cmaj7 or C7.</p>
+                    </div>
+                    <div>
+                        <div class="text-blue-400 font-semibold mb-1">Blues Scale</div>
+                        <p class="text-slate-400 mb-2">1 - b3 - 4 - b5 - 5 - b7</p>
+                        <p>Minor pentatonic plus the <strong>"blue note"</strong> (b5). Essential for blues and rock improvisation. The b5 creates tension that resolves to either the 4 or 5. Example: G blues scale over a G7 blues progression.</p>
+                    </div>
+                    <div class="pt-2 border-t border-slate-700">
+                        <p class="text-xs text-slate-500">Tip: Start with minor pentatonic - it works over most chord types and is hard to make sound "wrong."</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- ==================== INTERVALS MODE ==================== -->
         <div id="intervalsPanel" class="mode-panel">
             <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
@@ -2181,7 +2213,12 @@
             <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
                 <div class="flex justify-between items-start mb-4">
                     <div>
-                        <h2 class="text-xl font-semibold text-white mb-1">Pentatonic & Blues Scales</h2>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h2 class="text-xl font-semibold text-white">Pentatonic & Blues Scales</h2>
+                            <button onclick="document.getElementById('pentInfoModal').classList.remove('hidden')" class="text-slate-400 hover:text-white transition" title="When to use these scales">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
                         <p class="text-sm text-slate-400">Play <span class="text-blue-400">pentatonic</span> and <span class="text-blue-400">blues</span> scales in all 12 keys</p>
                     </div>
                     <div class="text-right">
