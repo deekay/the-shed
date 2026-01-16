@@ -47,6 +47,39 @@ These focus on learning specific chord voicings in all 12 keys.
 - **Notes:** 4 notes
 - **Practice idea:** Learn all 3 diminished chord shapes (only 3 unique ones exist)
 
+### Upper Structure Triads ✅ IMPLEMENTED (Mode 18)
+- **Description:** Memorize which triads to play over dominant 7th chords to get altered/extended sounds
+- **Concept:** Instead of thinking "b9, #11, b13", you learn "Ab major triad over G7 = altered sound"
+- **The formula:** The root of the triad becomes the main tension color
+  - Want b9? Play triad built on b2 (bII)
+  - Want #9? Play triad built on b3 (bIII)
+  - Want #11? Play triad built on 2 (II) - its 3rd is the #11
+- **Mappings (triad interval from root):**
+  - bII (Db/C7) → 7b9 sound
+  - II (D/C7) → 13#11 sound
+  - bIII (Eb/C7) → 7#9 sound
+  - bVI (Ab/C7) → 7alt sound (b9, #11, b13)
+  - VI (A/C7) → 13b9 sound
+- **Hint progression:**
+  - Level 1 (Full): "Play Ab major over G"
+  - Level 2 (Interval): "Upper structure: bVI"
+  - Level 3 (None): Just "G7alt"
+- **Notes:** 4 notes (1 LH root + 3 RH triad)
+- **Why drill this:** Learn 5 relationships that transpose to any key, not 60 individual mappings
+- **Use case:** Comping over standards, instant access to complex dominant sounds
+- **Source:** Common technique in modern jazz voicings (Herbie Hancock, Chick Corea)
+
+### Slash Chords (Chord Inversions)
+- **Description:** Play a chord with a specific bass note (not necessarily the root)
+- **Examples:**
+  - C/E = C major with E in bass (first inversion)
+  - C/G = C major with G in bass (second inversion)
+  - Dm7/A = Dm7 with A in bass
+  - F/G = F major over G bass (common "sus" sound)
+- **Notes:** 4+ notes (LH bass + RH chord)
+- **Use case:** Smooth bass lines, specific voice leading, standard notation reading
+- **Practice idea:** Given "C/E", play E in LH and C-E-G in RH
+
 ---
 
 ## Progression-Based Games
@@ -155,12 +188,32 @@ These focus on recognizing relationships between notes.
   - Could show chord symbol and melody note, ask "what chord tone is this?"
   - Practice recognizing guide tones (3rds and 7ths) vs extensions (9ths, 11ths, 13ths)
 
-### Guide Tone Line Practice
+### Guide Tone Line Practice ✅ IMPLEMENTED (Mode 20)
 - **Description:** Play just the 3rds and 7ths through a progression
 - **Concept:** Guide tones define the harmony and voice-lead smoothly
 - **Example:** Through ii-V-I: F-C → F-B → E-B (for Dm7-G7-Cmaj7)
 - **Why:** Builds awareness of how 7ths resolve to 3rds (and vice versa)
-- **Implementation idea:** Show progression, player plays only 3-7 of each chord
+- **Implementation:** "Voice Leading Trainer" mode shows source chord notes, asks for target chord notes, highlights common tones and resolutions
+
+---
+
+## Chart Practice (NEW CATEGORY)
+
+A new category for practicing real tunes with optimized voice leading.
+
+### All The Things You Are ✅ IMPLEMENTED
+- **Description:** Practice the 36-bar AABA' form with computed optimal voicings
+- **Voicing options:** Rootless (Type A/B optimized) or Shell
+- **Voice leading:** Algorithm computes optimal A/B choices to maximize common tones
+- **Hints:** Shows exact note names when enabled
+- **Key:** Ab major with modulations through C, G, E major keys
+
+### Future Charts
+- Autumn Leaves
+- Blue Bossa
+- All of Me
+- Take the A Train
+- Misty
 
 ---
 
@@ -168,11 +221,13 @@ These focus on recognizing relationships between notes.
 
 Games we're most likely to build next:
 1. ~~Shell Voicings~~ **IMPLEMENTED** (Mode 17)
-2. Rootless Type A/B (natural progression from Dom7 Voicing)
-3. So What Voicing (iconic, distinct sound)
-4. ~~Tritone Subs~~ **IMPLEMENTED** (Mode 16)
-5. Root Movement Drill (foundational ear training)
-6. Guide Tone Lines (voice-leading awareness)
+2. ~~Freestyle Voicing~~ **IMPLEMENTED** (Mode 19) - Play any valid voicing containing guide tones
+3. ~~All The Things You Are~~ **IMPLEMENTED** (Charts category) - Practice with optimal voice leading
+4. Rootless Type A/B (natural progression from Dom7 Voicing)
+5. So What Voicing (iconic, distinct sound)
+6. ~~Tritone Subs~~ **IMPLEMENTED** (Mode 16)
+7. Root Movement Drill (foundational ear training)
+8. ~~Guide Tone Lines~~ **IMPLEMENTED** (Mode 20 - Voice Leading Trainer) - Learn common tones & resolutions
 
 ---
 
