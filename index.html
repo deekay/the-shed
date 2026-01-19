@@ -3605,12 +3605,55 @@
             </div>
         </div>
 
+        <!-- Session Log Panel -->
+        <div class="bg-slate-800 rounded-lg p-6 shadow-lg mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-semibold text-white">Session Log</h2>
+                    <span id="sessionLogBadge" class="bg-amber-600 text-white text-xs px-2 py-0.5 rounded-full">0</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="sessionLogToggle" onchange="toggleSessionLog()" class="w-4 h-4 rounded bg-slate-700 border-slate-600 mr-2" checked>
+                        <span class="text-sm text-slate-400">Enable Logging</span>
+                    </label>
+                    <button id="sessionLogExpandBtn" onclick="toggleSessionLogPanel()" class="text-slate-400 hover:text-white transition">
+                        <svg class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div id="sessionLogPanel" class="hidden">
+                <!-- Storage Stats -->
+                <div id="sessionLogStats" class="text-sm text-slate-400 mb-4">
+                    <span>Sessions: <span id="sessionLogCount">0</span></span>
+                    <span class="mx-2">|</span>
+                    <span>Size: <span id="sessionLogSize">0 KB</span></span>
+                </div>
+                <!-- Export Button -->
+                <div class="flex gap-2 mb-4">
+                    <button id="exportJsonBtn" onclick="exportSessionLogJSON()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 text-sm rounded transition">Export JSON</button>
+                </div>
+                <!-- Recent Sessions List -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-semibold text-slate-300 mb-2">Recent Sessions</h3>
+                    <div id="recentSessionsList" class="bg-slate-900 rounded p-3 text-slate-400 text-sm max-h-48 overflow-y-auto">
+                        No sessions logged yet.
+                    </div>
+                </div>
+                <!-- Clear Data Button -->
+                <button id="clearLogBtn" onclick="clearSessionLog()" class="px-3 py-1.5 bg-red-900 hover:bg-red-800 text-red-300 text-sm rounded transition">Clear All Data</button>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center text-slate-500 text-sm mt-8 pt-4 pb-16 border-t border-slate-700">
             <span class="font-semibold text-slate-400">The Shed</span> · Feedback? DM <a href="https://twitter.com/dksf" target="_blank" class="text-amber-400 hover:text-amber-300">@dksf</a> on Twitter/X
         </footer>
 
     </div>
+
+    <!-- Session Logging Infrastructure -->
+    <script src="session-logging.js"></script>
 
     <script>
         // ============ CONFIGURATION ============
@@ -4459,6 +4502,12 @@
                 updateChordIdentifier();
                 // Highlight preview piano (for testing before game starts)
                 highlightKey('previewPianoSvg', note, 'key-active');
+
+                // Session logging
+                if (sessionLogEnabled && currentRoundLog) {
+                    sessionLogRecordEvent('noteOn', note, vel);
+                }
+
                 if (currentMode === 'intervals') intOnNoteOn(note);
                 else if (currentMode === 'chords') chOnNoteOn(note);
                 else if (currentMode === 'iivi') iiviOnNoteOn(note);
@@ -4484,6 +4533,12 @@
                 updateChordIdentifier();
                 // Clear preview piano highlight
                 highlightKey('previewPianoSvg', note, 'key-active', false);
+
+                // Session logging
+                if (sessionLogEnabled && currentRoundLog) {
+                    sessionLogRecordEvent('noteOff', note, vel);
+                }
+
                 if (currentMode === 'intervals') intOnNoteOff(note);
                 else if (currentMode === 'chords') chOnNoteOff(note);
                 else if (currentMode === 'iivi') iiviOnNoteOff(note);
@@ -4650,6 +4705,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('intervals', int_config);
             int_currentRound = 0;
             int_firstTryCorrect = 0;
             int_totalMistakes = 0;
@@ -4692,6 +4748,7 @@
         }
 
         function intStopGame() {
+            sessionLogEndSession();
             int_isPlaying = false;
             int_challenge = null;
             clearAllHighlights('pianoSvg');
@@ -4765,6 +4822,7 @@
             const targetMidi = dir === 'up' ? startMidi + interval : startMidi - interval;
             int_challenge = { startMidi, interval, direction: dir, targetMidi };
             int_challengeStartTime = Date.now();
+            sessionLogStartRound(int_challenge);
 
             document.getElementById('int_startNote').innerText = NOTE_NAMES[startPitchClass];
             document.getElementById('int_intervalName').innerText = INTERVAL_NAMES[interval];
@@ -4815,6 +4873,13 @@
                 }
                 highlightKey('pianoSvg', midi, 'key-active');
                 intUpdateScoreDisplay();
+                const intRoundResponseTime = Date.now() - int_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: intRoundResponseTime,
+                    isFirstTry: !int_roundHadMistake,
+                    correct: true,
+                    slow: intRoundResponseTime >= 2000
+                });
                 int_isPlaying = false; // Prevent mistakes during transition
                 setTimeout(() => { int_isPlaying = true; intNextChallenge(); }, 400);
             } else {
@@ -4853,6 +4918,7 @@
         }
 
         function intEndGame() {
+            sessionLogEndSession();
             int_isPlaying = false;
             int_challenge = null;
             clearAllHighlights('pianoSvg');
@@ -5116,6 +5182,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('chords', ch_config);
             ch_currentRound = 0; ch_firstTryCorrect = 0; ch_totalMistakes = 0; ch_slowCount = 0; ch_roundHadMistake = false; ch_attemptHadMistake = false; ch_usedChallenges = new Set(); ch_stats = {}; ch_allTimes = [];
 
             document.getElementById('ch_roundDisplay').innerText = '0';
@@ -5150,6 +5217,7 @@
         }
 
         function chStopGame() {
+            sessionLogEndSession();
             ch_isPlaying = false;
             ch_challenge = null;
             clearAllHighlights('ch_pianoSvg');
@@ -5204,6 +5272,7 @@
 
             ch_challenge = { root, type, requiredPitchClasses, name: `${NOTE_NAMES[root]} ${chordDef.display}` };
             ch_challengeStartTime = Date.now();
+            sessionLogStartRound(ch_challenge);
 
             document.getElementById('ch_chordRoot').innerText = NOTE_NAMES[root];
             document.getElementById('ch_chordType').innerText = chordDef.display;
@@ -5272,6 +5341,13 @@
                     chShowFeedback('✓', true);
                 }
                 chUpdateScoreDisplay();
+                const chRoundResponseTime = Date.now() - ch_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: chRoundResponseTime,
+                    isFirstTry: !ch_roundHadMistake,
+                    correct: true,
+                    slow: chRoundResponseTime >= 2000
+                });
 
                 // Highlight correct notes green
                 heldNotes.forEach(n => {
@@ -5320,6 +5396,7 @@
         }
 
         function chEndGame() {
+            sessionLogEndSession();
             ch_isPlaying = false;
             ch_challenge = null;
             clearAllHighlights('ch_pianoSvg');
@@ -5667,6 +5744,7 @@
                 focusProblemAreas,
                 problemAreaKeys
             };
+            sessionLogStartSession('iivi', iivi_config);
             iivi_currentRound = 0; iivi_firstTryCorrect = 0; iivi_totalMistakes = 0; iivi_slowCount = 0;
             iivi_roundHadMistake = false; iivi_attemptHadMistake = false; iivi_usedKeys = new Set();
             iivi_stats = {}; iivi_allTimes = [];
@@ -5745,6 +5823,7 @@
         }
 
         function iiviStopGame() {
+            sessionLogEndSession();
             iivi_isPlaying = false;
             iivi_challenge = null;
             clearAllHighlights('iivi_pianoSvg');
@@ -5785,6 +5864,7 @@
             iivi_challenge = { key, chords, currentStep: 0 };
             iivi_challengeStartTime = Date.now();
             iivi_stepStartTime = Date.now();
+            sessionLogStartRound(iivi_challenge);
 
             document.getElementById('iivi_keyDisplay').innerText = NOTE_NAMES[key];
             document.getElementById('iivi_heldNotes').innerText = 'Holding: --';
@@ -5993,6 +6073,13 @@
                     iivi_allTimes.push(avgTime);
                     iiviShowFeedback('✓', true);
                     iiviUpdateResponseTime(avgTime);
+                    const iiviRoundResponseTime = Date.now() - iivi_challengeStartTime;
+                    sessionLogEndRound({
+                        responseTime: iiviRoundResponseTime,
+                        isFirstTry: !iivi_roundHadMistake,
+                        correct: true,
+                        slow: hadSlowStep
+                    });
 
                     setTimeout(() => { iivi_isPlaying = true; iiviNextChallenge(); }, 800);
                 } else {
@@ -6041,6 +6128,7 @@
         }
 
         function iiviEndGame() {
+            sessionLogEndSession();
             iivi_isPlaying = false;
             iivi_challenge = null;
             clearAllHighlights('iivi_pianoSvg');
@@ -6382,6 +6470,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('scales', sc_config);
             sc_currentRound = 0; sc_firstTryCorrect = 0; sc_totalMistakes = 0;
             sc_roundHadMistake = false; sc_noteHadMistake = false; sc_usedChallenges = new Set();
             sc_stats = {}; sc_allTimes = [];
@@ -6447,6 +6536,7 @@
         }
 
         function scStopGame() {
+            sessionLogEndSession();
             sc_isPlaying = false;
             sc_challenge = null;
             clearAllHighlights('sc_pianoSvg');
@@ -6500,6 +6590,7 @@
 
             sc_challenge = { ...scale, currentNoteIndex: 0 };
             sc_challengeStartTime = Date.now();
+            sessionLogStartRound(sc_challenge);
 
             document.getElementById('sc_chordDisplay').innerText = scale.chordDisplay;
             document.getElementById('sc_scaleNameDisplay').innerText = scale.scaleName;
@@ -6560,6 +6651,13 @@
                         scShowFeedback('✓', true);
                     }
                     document.getElementById('sc_expectedNote').innerHTML = '<span class="text-green-400">Complete!</span>';
+                    const scRoundResponseTime = Date.now() - sc_challengeStartTime;
+                    sessionLogEndRound({
+                        responseTime: scRoundResponseTime,
+                        isFirstTry: !sc_roundHadMistake,
+                        correct: true,
+                        slow: scRoundResponseTime >= 4000
+                    });
 
                     sc_isPlaying = false; // Prevent mistakes during transition
                     setTimeout(() => { sc_isPlaying = true; scNextChallenge(); }, 800);
@@ -6609,6 +6707,7 @@
         }
 
         function scEndGame() {
+            sessionLogEndSession();
             sc_isPlaying = false;
             sc_challenge = null;
             clearAllHighlights('sc_pianoSvg');
@@ -6870,6 +6969,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('ext', ext_config);
             ext_currentRound = 0; ext_firstTryCorrect = 0; ext_totalMistakes = 0; ext_slowCount = 0;
             ext_roundHadMistake = false; ext_usedChallenges = new Set();
             ext_stats = {}; ext_allTimes = [];
@@ -6909,6 +7009,7 @@
         }
 
         function extStopGame() {
+            sessionLogEndSession();
             ext_isPlaying = false;
             ext_challenge = null;
             clearAllHighlights('ext_pianoSvg');
@@ -6971,6 +7072,7 @@
             document.getElementById('ext_heldNotes').innerText = 'Holding: --';
 
             ext_isPlaying = true; // Re-enable input for new challenge
+            sessionLogStartRound(ext_challenge);
         }
 
         function extUpdateHeldDisplay() {
@@ -7031,6 +7133,14 @@
                 const extPct = ext_currentRound > 0 ? Math.round((ext_firstTryCorrect / ext_currentRound) * 100) : 0;
                 document.getElementById('ext_scoreDisplay').innerText = extPct + '%';
 
+                const extRoundResponseTime = Date.now() - ext_startTime;
+                sessionLogEndRound({
+                    responseTime: extRoundResponseTime,
+                    isFirstTry: !ext_roundHadMistake,
+                    correct: true,
+                    slow: wasSlow
+                });
+
                 clearAllHighlights('ext_pianoSvg');
                 setTimeout(() => {
                     ext_heldNotes.clear();
@@ -7056,6 +7166,7 @@
         }
 
         function extShowGameComplete() {
+            sessionLogEndSession();
             document.getElementById('ext_stopBtn').classList.add('hidden');
             document.getElementById('ext_challengeDisplay').classList.add('hidden');
             document.getElementById('ext_gameCompleteDisplay').classList.remove('hidden');
@@ -7347,6 +7458,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('alt', alt_config);
             alt_currentRound = 0; alt_firstTryCorrect = 0; alt_totalMistakes = 0; alt_slowCount = 0;
             alt_roundHadMistake = false; alt_usedChallenges = new Set();
             alt_stats = {}; alt_allTimes = [];
@@ -7383,6 +7495,7 @@
         }
 
         function altStopGame() {
+            sessionLogEndSession();
             alt_isPlaying = false;
             alt_challenge = null;
             clearAllHighlights('alt_pianoSvg');
@@ -7442,6 +7555,7 @@
             document.getElementById('alt_noteCount').innerText = challenge.noteCount;
             document.getElementById('alt_formulaDisplay').innerText = challenge.formula.join(' - ');
             document.getElementById('alt_heldNotes').innerText = 'Holding: --';
+            sessionLogStartRound(alt_challenge);
         }
 
         function altUpdateHeldDisplay() {
@@ -7502,6 +7616,14 @@
                 const altPct = alt_currentRound > 0 ? Math.round((alt_firstTryCorrect / alt_currentRound) * 100) : 0;
                 document.getElementById('alt_scoreDisplay').innerText = altPct + '%';
 
+                const altRoundResponseTime = Date.now() - alt_startTime;
+                sessionLogEndRound({
+                    responseTime: altRoundResponseTime,
+                    isFirstTry: !alt_roundHadMistake,
+                    correct: true,
+                    slow: wasSlow
+                });
+
                 clearAllHighlights('alt_pianoSvg');
                 setTimeout(() => {
                     alt_heldNotes.clear();
@@ -7527,6 +7649,7 @@
         }
 
         function altShowGameComplete() {
+            sessionLogEndSession();
             document.getElementById('alt_stopBtn').classList.add('hidden');
             document.getElementById('alt_challengeDisplay').classList.add('hidden');
             document.getElementById('alt_gameCompleteDisplay').classList.remove('hidden');
@@ -7792,6 +7915,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('adv', adv_config);
             adv_currentRound = 0; adv_firstTryCorrect = 0; adv_totalMistakes = 0; adv_slowCount = 0;
             adv_roundHadMistake = false; adv_attemptHadMistake = false;
             adv_usedChallenges = new Set(); adv_stats = {}; adv_allTimes = [];
@@ -7831,6 +7955,7 @@
         }
 
         function advStopGame() {
+            sessionLogEndSession();
             adv_isPlaying = false;
             adv_challenge = null;
             clearAllHighlights('adv_pianoSvg');
@@ -7897,6 +8022,7 @@
                 name: `${NOTE_NAMES[root]} ${chordDef.display}`
             };
             adv_challengeStartTime = Date.now();
+            sessionLogStartRound(adv_challenge);
 
             document.getElementById('adv_chordRoot').innerText = NOTE_NAMES[root];
             document.getElementById('adv_chordType').innerText = chordDef.display;
@@ -7956,6 +8082,13 @@
                     advShowFeedback('✓', true);
                 }
                 advUpdateScoreDisplay();
+                const advRoundResponseTime = Date.now() - adv_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: advRoundResponseTime,
+                    isFirstTry: !adv_roundHadMistake,
+                    correct: true,
+                    slow: advRoundResponseTime >= 2000
+                });
 
                 // Highlight correct notes green
                 heldNotes.forEach(n => {
@@ -8003,6 +8136,7 @@
         }
 
         function advEndGame() {
+            sessionLogEndSession();
             adv_isPlaying = false;
             adv_challenge = null;
             clearAllHighlights('adv_pianoSvg');
@@ -8296,6 +8430,7 @@
                 focusProblemAreas,
                 problemAreaKeys
             };
+            sessionLogStartSession('minorIivi', miivi_config);
             miivi_currentRound = 0; miivi_firstTryCorrect = 0; miivi_totalMistakes = 0; miivi_slowCount = 0;
             miivi_roundHadMistake = false; miivi_attemptHadMistake = false; miivi_usedKeys = new Set();
             miivi_stats = {}; miivi_allTimes = [];
@@ -8361,6 +8496,7 @@
         }
 
         function miiviStopGame() {
+            sessionLogEndSession();
             miivi_isPlaying = false;
             miivi_challenge = null;
             clearAllHighlights('miivi_pianoSvg');
@@ -8400,6 +8536,7 @@
             miivi_challenge = { key, chords, currentStep: 0 };
             miivi_challengeStartTime = Date.now();
             miivi_stepStartTime = Date.now();
+            sessionLogStartRound(miivi_challenge);
 
             document.getElementById('miivi_keyDisplay').innerText = NOTE_NAMES[key] + ' minor';
             document.getElementById('miivi_chord_ii').innerText = chords[0].name;
@@ -8552,6 +8689,14 @@
                     miivi_isPlaying = false; // Prevent mistakes during transition
                     const avgChordTime = miivi_stepTimes.reduce((a, b) => a + b, 0) / miivi_stepTimes.length;
                     miiviUpdateResponseTime(avgChordTime);
+                    const miiviRoundResponseTime = Date.now() - miivi_challengeStartTime;
+                    const miiviHadSlowStep = miivi_stepTimes.some(t => t > 2);
+                    sessionLogEndRound({
+                        responseTime: miiviRoundResponseTime,
+                        isFirstTry: !miivi_roundHadMistake,
+                        correct: true,
+                        slow: miiviHadSlowStep
+                    });
                     setTimeout(() => { miivi_isPlaying = true; miiviNextChallenge(); }, 600);
                 }
             }
@@ -8593,6 +8738,7 @@
         }
 
         function miiviEndGame() {
+            sessionLogEndSession();
             miivi_isPlaying = false;
             miivi_challenge = null;
             clearAllHighlights('miivi_pianoSvg');
@@ -8866,6 +9012,7 @@
             }
 
             kb_config = { chordType, voicingType, totalRounds, showHints, focusProblemAreas, problemAreaKeys };
+            sessionLogStartSession('kb', kb_config);
             kb_currentRound = 0;
             kb_usedKeys = new Set();
             kb_stats = {};
@@ -8907,6 +9054,7 @@
         }
 
         function kbStopGame() {
+            sessionLogEndSession();
             kb_gameActive = false;
             kb_isPlaying = false;
             if (kb_timerInterval) clearInterval(kb_timerInterval);
@@ -9005,6 +9153,7 @@
             kbUpdateNoteIndicators();
             kb_startTime = Date.now();
             kb_gameActive = true;
+            sessionLogStartRound(kb_challenge);
         }
 
         function kbUpdateNoteIndicators() {
@@ -9108,6 +9257,14 @@
                     timerEl.innerText = avgTime.toFixed(1) + 's';
                     timerEl.className = 'text-2xl font-mono ' + (avgTime < 3 ? 'timer-fast' : avgTime < 6 ? 'timer-medium' : 'timer-slow');
 
+                    const kbRoundResponseTime = Date.now() - kb_startTime;
+                    sessionLogEndRound({
+                        responseTime: kbRoundResponseTime,
+                        isFirstTry: !kb_roundHadMistake,
+                        correct: true,
+                        slow: wasSlow
+                    });
+
                     kbShowFeedback('✓', 'text-green-400');
                     setTimeout(kbNextChallenge, 800);
                 }
@@ -9124,6 +9281,7 @@
         }
 
         function kbGameComplete() {
+            sessionLogEndSession();
             kb_gameActive = false;
             kb_isPlaying = false;
 
@@ -9420,6 +9578,7 @@
             }
 
             jtou_config = { totalRounds, showHints, voicing, focusProblemAreas, problemAreaKeys };
+            sessionLogStartSession('jtou', jtou_config);
             jtou_currentRound = 0;
             jtou_usedKeys = new Set();
             jtou_stats = {};
@@ -9471,6 +9630,7 @@
         }
 
         function jtouStopGame() {
+            sessionLogEndSession();
             jtou_gameActive = false;
             jtou_isPlaying = false;
             clearAllHighlights('jtou_pianoSvg');
@@ -9537,6 +9697,7 @@
 
             jtou_startTime = Date.now();
             jtou_stepStartTime = Date.now();
+            sessionLogStartRound(jtou_challenge);
             jtou_gameActive = true;
             jtou_isPlaying = true;
             jtou_attemptHadMistake = false;
@@ -9649,6 +9810,14 @@
                     jtou_stats[keyName].times.push(...jtou_stepTimes);
                     // Count slow chords in this round
                     jtou_stats[keyName].slow += jtou_stepTimes.filter(t => t > 2).length;
+                    const jtouRoundResponseTime = Date.now() - jtou_startTime;
+                    const jtouHadSlowStep = jtou_stepTimes.some(t => t > 2);
+                    sessionLogEndRound({
+                        responseTime: jtouRoundResponseTime,
+                        isFirstTry: !jtou_roundHadMistake,
+                        correct: true,
+                        slow: jtouHadSlowStep
+                    });
 
                     setTimeout(() => { jtou_isPlaying = true; jtouNextChallenge(); }, 600);
                 }
@@ -9684,6 +9853,7 @@
         }
 
         function jtouEndGame() {
+            sessionLogEndSession();
             jtou_isPlaying = false;
             jtou_gameActive = false;
             jtou_challenge = null;
@@ -10004,6 +10174,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('dom7v', dom7v_config);
             dom7v_currentRound = 0;
             dom7v_firstTryCorrect = 0;
             dom7v_totalMistakes = 0;
@@ -10123,6 +10294,7 @@
             dom7v_currentRound++;
             dom7v_roundHadMistake = false;
             dom7v_challengeStartTime = Date.now();
+            sessionLogStartRound(dom7v_challenge);
 
             document.getElementById('dom7v_roundDisplay').innerText = dom7v_currentRound;
             document.getElementById('dom7v_chordDisplay').innerText = dom7v_challenge.name;
@@ -10216,6 +10388,13 @@
                     dom7vUpdateResponseTime(avg);
                 }
 
+                const dom7vRoundResponseTime = Date.now() - dom7v_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: dom7vRoundResponseTime,
+                    isFirstTry: !dom7v_roundHadMistake,
+                    correct: true,
+                    slow: responseTime > 2
+                });
                 dom7v_isPlaying = false;
                 setTimeout(() => {
                     clearAllHighlights('dom7v_pianoSvg');
@@ -10249,6 +10428,7 @@
         }
 
         function dom7vStopGame() {
+            sessionLogEndSession();
             dom7v_isPlaying = false;
             dom7v_challenge = null;
             clearAllHighlights('dom7v_pianoSvg');
@@ -10259,6 +10439,7 @@
         }
 
         function dom7vEndGame() {
+            sessionLogEndSession();
             dom7v_isPlaying = false;
             dom7v_challenge = null;
             clearAllHighlights('dom7v_pianoSvg');
@@ -10534,6 +10715,7 @@
                 focusProblemAreas,
                 problemAreaChallenges
             };
+            sessionLogStartSession('extv', extv_config);
             extv_currentRound = 0;
             extv_firstTryCorrect = 0;
             extv_totalMistakes = 0;
@@ -10638,6 +10820,7 @@
             extv_currentRound++;
             extv_roundHadMistake = false;
             extv_challengeStartTime = Date.now();
+            sessionLogStartRound(extv_challenge);
 
             document.getElementById('extv_roundDisplay').innerText = extv_currentRound;
             document.getElementById('extv_chordDisplay').innerText = extv_challenge.name;
@@ -10715,6 +10898,13 @@
                     const avg = extv_allTimes.reduce((a, b) => a + b, 0) / extv_allTimes.length;
                     extvUpdateResponseTime(avg);
                 }
+                const extvRoundResponseTime = Date.now() - extv_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: extvRoundResponseTime,
+                    isFirstTry: !extv_roundHadMistake,
+                    correct: true,
+                    slow: responseTime > 2
+                });
 
                 setTimeout(() => {
                     clearAllHighlights('extv_pianoSvg');
@@ -10745,6 +10935,7 @@
         }
 
         function extvStopGame() {
+            sessionLogEndSession();
             extv_isPlaying = false;
             extv_challenge = null;
             clearAllHighlights('extv_pianoSvg');
@@ -10755,6 +10946,7 @@
         }
 
         function extvEndGame() {
+            sessionLogEndSession();
             extv_isPlaying = false;
             extv_challenge = null;
 
@@ -11013,6 +11205,7 @@
             }
 
             pent_config = { scaleType, rounds, showHints, focusProblemAreas, problemAreaChallenges };
+            sessionLogStartSession('pent', pent_config);
             pent_isPlaying = true;
             pent_usedChallenges.clear();
             pent_currentRound = 0;
@@ -11041,6 +11234,7 @@
         }
 
         function pentStopGame() {
+            sessionLogEndSession();
             pent_isPlaying = false;
             document.getElementById('pent_settingsPanel').classList.remove('hidden');
             document.getElementById('pent_challengeDisplay').classList.add('hidden');
@@ -11124,6 +11318,7 @@
             };
 
             pent_challengeStartTime = Date.now();
+            sessionLogStartRound(pent_challenge);
 
             // Update display
             document.getElementById('pent_rootDisplay').innerText = NOTE_NAMES[root];
@@ -11221,6 +11416,13 @@
 
                     // Show feedback
                     pentShowFeedback(true);
+                    const pentRoundResponseTime = Date.now() - pent_challengeStartTime;
+                    sessionLogEndRound({
+                        responseTime: pentRoundResponseTime,
+                        isFirstTry: !pent_roundHadMistake,
+                        correct: true,
+                        slow: elapsed > 2
+                    });
 
                     // Next challenge after delay
                     setTimeout(pentNextChallenge, 800);
@@ -11253,6 +11455,7 @@
         }
 
         function pentEndGame() {
+            sessionLogEndSession();
             pent_isPlaying = false;
             pent_challenge = null;
 
@@ -11539,6 +11742,7 @@
             }
 
             bebop_config = { scaleTypes, rounds, showHints, focusProblemAreas, problemAreaChallenges };
+            sessionLogStartSession('bebop', bebop_config);
             bebop_currentRound = 0;
             bebop_firstTryCorrect = 0;
             bebop_totalMistakes = 0;
@@ -11576,6 +11780,7 @@
         }
 
         function bebopStopGame() {
+            sessionLogEndSession();
             bebop_isPlaying = false;
             document.getElementById('bebop_settingsPanel').classList.remove('hidden');
             document.getElementById('bebop_challengeDisplay').classList.add('hidden');
@@ -11658,6 +11863,7 @@
 
             clearPiano('bebop_pianoSvg');
             bebop_challengeStartTime = Date.now();
+            sessionLogStartRound(bebop_challenge);
         }
 
         function bebopOnNoteOn(midi) {
@@ -11732,6 +11938,13 @@
                     // Show "Complete!" in expected note area
                     document.getElementById('bebop_expectedNote').innerHTML = '<span class="text-green-400">Complete!</span>';
 
+                    const bebopRoundResponseTime = Date.now() - bebop_challengeStartTime;
+                    sessionLogEndRound({
+                        responseTime: bebopRoundResponseTime,
+                        isFirstTry: !bebop_roundHadMistake,
+                        correct: true,
+                        slow: isSlow
+                    });
                     setTimeout(bebopNextChallenge, 800);
                 }
             } else {
@@ -11752,6 +11965,7 @@
         }
 
         function bebopEndGame() {
+            sessionLogEndSession();
             bebop_isPlaying = false;
 
             document.getElementById('bebop_challengeDisplay').classList.add('hidden');
@@ -12001,6 +12215,7 @@
             }
 
             tritone_config = { voicing, rounds, showHints, focusProblemAreas, problemAreaRoots };
+            sessionLogStartSession('tritone', tritone_config);
             tritone_currentRound = 0;
             tritone_firstTryCorrect = 0;
             tritone_totalMistakes = 0;
@@ -12039,6 +12254,7 @@
         }
 
         function tritoneStopGame() {
+            sessionLogEndSession();
             tritone_isPlaying = false;
             document.getElementById('tritone_settingsPanel').classList.remove('hidden');
             document.getElementById('tritone_challengeDisplay').classList.add('hidden');
@@ -12102,6 +12318,7 @@
 
             clearPiano('tritone_pianoSvg');
             tritone_challengeStartTime = Date.now();
+            sessionLogStartRound(tritone_challenge);
         }
 
         function tritoneOnNoteOn(midi) {
@@ -12165,6 +12382,13 @@
                 document.getElementById('tritone_feedbackText').textContent = `${tritone_challenge.subName}! ${isSlow ? '(Slow)' : ''}`;
                 document.getElementById('tritone_feedbackText').className = `text-lg font-semibold h-7 mt-4 ${isSlow ? 'text-yellow-400' : 'text-green-400'}`;
 
+                const tritoneRoundResponseTime = Date.now() - tritone_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: tritoneRoundResponseTime,
+                    isFirstTry: !tritone_roundHadMistake,
+                    correct: true,
+                    slow: isSlow
+                });
                 setTimeout(tritoneNextChallenge, 800);
             }
         }
@@ -12174,6 +12398,7 @@
         }
 
         function tritoneEndGame() {
+            sessionLogEndSession();
             tritone_isPlaying = false;
 
             document.getElementById('tritone_challengeDisplay').classList.add('hidden');
@@ -12439,6 +12664,7 @@
             }
 
             shell_config = { chordType: chordTypeSetting, rounds, showHints, focusProblemAreas, problemAreaChallenges };
+            sessionLogStartSession('shell', shell_config);
             shell_usedChallenges.clear();
             shell_currentRound = 0;
             shell_firstTryCorrect = 0;
@@ -12483,6 +12709,7 @@
         }
 
         function shellStopGame() {
+            sessionLogEndSession();
             shell_isPlaying = false;
             document.getElementById('shell_settingsPanel').classList.remove('hidden');
             document.getElementById('shell_challengeDisplay').classList.add('hidden');
@@ -12575,6 +12802,7 @@
             }
 
             clearPianoHighlights('shell_pianoSvg');
+            sessionLogStartRound(shell_challenge);
         }
 
         function shellOnNoteOn(midi) {
@@ -12631,6 +12859,14 @@
                 document.getElementById('shell_feedbackText').innerText = '✓ ' + shell_challenge.noteNames;
                 document.getElementById('shell_feedbackText').className = 'text-lg font-semibold h-7 mt-4 text-green-400';
 
+                const shellRoundResponseTime = Date.now() - shell_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: shellRoundResponseTime,
+                    isFirstTry: !shell_roundHadMistake,
+                    correct: true,
+                    slow: elapsed > 2000
+                });
+
                 if (shell_currentRound >= shell_config.rounds) {
                     setTimeout(() => shellEndGame(), 800);
                 } else {
@@ -12654,6 +12890,7 @@
         }
 
         function shellEndGame() {
+            sessionLogEndSession();
             shell_isPlaying = false;
 
             const avgTime = shell_allTimes.length > 0
@@ -12968,6 +13205,7 @@
             }
 
             upper_config = { structureType: typeSetting, rounds, hintLevel, focusProblemAreas, problemAreaChallenges };
+            sessionLogStartSession('upper', upper_config);
             upper_usedChallenges.clear();
             upper_currentRound = 0;
             upper_firstTryCorrect = 0;
@@ -13012,6 +13250,7 @@
         }
 
         function upperStopGame() {
+            sessionLogEndSession();
             upper_isPlaying = false;
             document.getElementById('upper_settingsPanel').classList.remove('hidden');
             document.getElementById('upper_challengeDisplay').classList.add('hidden');
@@ -13107,6 +13346,7 @@
             }
 
             clearPianoHighlights('upper_pianoSvg');
+            sessionLogStartRound(upper_challenge);
         }
 
         function upperOnNoteOn(midi) {
@@ -13157,6 +13397,14 @@
                 document.getElementById('upper_feedbackText').innerText = `✓ ${upper_challenge.bassName} + ${upper_challenge.triadRootName} maj`;
                 document.getElementById('upper_feedbackText').className = 'text-lg font-semibold h-7 mt-4 text-green-400';
 
+                const upperRoundResponseTime = Date.now() - upper_challengeStartTime;
+                sessionLogEndRound({
+                    responseTime: upperRoundResponseTime,
+                    isFirstTry: !upper_roundHadMistake,
+                    correct: true,
+                    slow: elapsed > 2000
+                });
+
                 if (upper_currentRound >= upper_config.rounds) {
                     setTimeout(() => upperEndGame(), 800);
                 } else {
@@ -13171,6 +13419,7 @@
         }
 
         function upperEndGame() {
+            sessionLogEndSession();
             upper_isPlaying = false;
 
             const avgTime = upper_allTimes.length > 0
@@ -13359,6 +13608,67 @@
             content.innerHTML = html;
         }
 
+        // ============ SESSION LOG UI ============
+        function toggleSessionLog() {
+            sessionLogEnabled = document.getElementById('sessionLogToggle').checked;
+            updateSessionLogUI();
+            saveAllSettings();
+        }
+
+        function clearSessionLog() {
+            if (!confirm('Clear all session log data? This cannot be undone.')) return;
+            sessionLogSessions = [];
+            sessionLogSaveToStorage();
+            updateSessionLogUI();
+        }
+
+        function updateSessionLogUI() {
+            const toggle = document.getElementById('sessionLogToggle');
+            const jsonBtn = document.getElementById('exportJsonBtn');
+            const clearBtn = document.getElementById('clearLogBtn');
+            const badge = document.getElementById('sessionLogBadge');
+            const countEl = document.getElementById('sessionLogCount');
+            const sizeEl = document.getElementById('sessionLogSize');
+            const listEl = document.getElementById('recentSessionsList');
+
+            // Sync toggle with state
+            if (toggle) {
+                toggle.checked = sessionLogEnabled;
+            }
+
+            // Enable/disable buttons based on whether there's data
+            const hasData = sessionLogSessions && sessionLogSessions.length > 0;
+            if (jsonBtn) jsonBtn.disabled = !hasData;
+            if (clearBtn) clearBtn.disabled = !hasData;
+
+            // Update badge and count
+            const count = sessionLogSessions ? sessionLogSessions.length : 0;
+            if (badge) badge.textContent = count;
+            if (countEl) countEl.textContent = count;
+
+            // Update storage size
+            if (sizeEl) {
+                const dataStr = JSON.stringify(sessionLogSessions || []);
+                const sizeKB = (new Blob([dataStr]).size / 1024).toFixed(1);
+                sizeEl.textContent = sizeKB + ' KB';
+            }
+
+            // Update recent sessions list
+            if (listEl) {
+                if (!hasData) {
+                    listEl.innerHTML = 'No sessions logged yet.';
+                } else {
+                    const recentSessions = sessionLogSessions.slice(-10).reverse();
+                    listEl.innerHTML = recentSessions.map(s => {
+                        const date = new Date(s.startTime || s.timestamp);
+                        const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                        const rounds = s.rounds ? s.rounds.length : 0;
+                        return `<div class="py-1 border-b border-slate-700 last:border-0">${dateStr} - ${s.mode} (${rounds} rounds)</div>`;
+                    }).join('');
+                }
+            }
+        }
+
         // ============ SETTINGS PERSISTENCE ============
         function saveAllSettings() {
             const settings = {
@@ -13476,6 +13786,10 @@
                 attya: {
                     voicing: document.getElementById('attya_voicingSelect').value,
                     showHints: document.getElementById('attya_showHints').checked
+                },
+                sessionLog: {
+                    enabled: document.getElementById('sessionLogToggle').checked,
+                    panelExpanded: !document.getElementById('sessionLogPanel').classList.contains('hidden')
                 }
             };
             localStorage.setItem('pianoTutorSettings', JSON.stringify(settings));
@@ -13645,6 +13959,22 @@
                     if (settings.attya.voicing) document.getElementById('attya_voicingSelect').value = settings.attya.voicing;
                     if (settings.attya.showHints !== undefined) document.getElementById('attya_showHints').checked = settings.attya.showHints;
                 }
+
+                // Session Log
+                if (settings.sessionLog) {
+                    if (settings.sessionLog.enabled !== undefined) {
+                        sessionLogEnabled = settings.sessionLog.enabled;
+                        document.getElementById('sessionLogToggle').checked = settings.sessionLog.enabled;
+                    }
+                    if (settings.sessionLog.panelExpanded) {
+                        document.getElementById('sessionLogPanel').classList.remove('hidden');
+                        document.getElementById('sessionLogExpandBtn').querySelector('svg').style.transform = 'rotate(180deg)';
+                    }
+                } else if (settings.sessionLogEnabled !== undefined) {
+                    // Backward compatibility with old format
+                    sessionLogEnabled = settings.sessionLogEnabled;
+                    document.getElementById('sessionLogToggle').checked = settings.sessionLogEnabled;
+                }
             } catch (e) {
                 console.error('Failed to load settings:', e);
             }
@@ -13733,6 +14063,7 @@
             const showHints = document.getElementById('freestyle_showHints').checked;
             const focusProblemAreas = document.getElementById('freestyle_focusProblemAreas').checked;
             freestyle_config = { chordType: chordTypeSetting, rounds, requireRoot, showHints, focusProblemAreas };
+            sessionLogStartSession('freestyle', freestyle_config);
             freestyle_usedChallenges.clear();
             freestyle_currentRound = 0;
             freestyle_firstTryCorrect = 0;
@@ -13778,6 +14109,7 @@
         }
 
         function freestyleStopGame() {
+            sessionLogEndSession();
             freestyle_isPlaying = false;
             // Clear any pending confirmation timer
             if (freestyle_confirmationTimer) {
@@ -13856,6 +14188,7 @@
             freestyle_roundHadMistake = false;
             freestyle_heldNotes.clear();
             freestyle_challengeStartTime = Date.now();
+            sessionLogStartRound(freestyle_challenge);
 
             // Initialize stats for this chord
             const statKey = chordName;
@@ -13949,6 +14282,13 @@
                 document.getElementById('freestyle_responseTime').className = 'text-2xl font-mono ' +
                     (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
 
+                sessionLogEndRound({
+                    responseTime: freestyle_confirmedTime,
+                    isFirstTry: !freestyle_roundHadMistake,
+                    correct: true,
+                    slow: freestyle_confirmedTime > 2000
+                });
+
                 // Show initial valid feedback
                 document.getElementById('freestyle_feedbackText').innerText = '✓ Valid!';
                 document.getElementById('freestyle_feedbackText').className = 'text-lg font-semibold h-7 mt-4 text-green-400';
@@ -14016,6 +14356,7 @@
         }
 
         function freestyleEndGame() {
+            sessionLogEndSession();
             freestyle_isPlaying = false;
             const avgTime = freestyle_allTimes.length > 0 ? freestyle_allTimes.reduce((a, b) => a + b, 0) / freestyle_allTimes.length : 0;
             const accuracy = freestyle_currentRound > 0 ? Math.round((freestyle_firstTryCorrect / freestyle_currentRound) * 100) : 0;
@@ -14295,11 +14636,17 @@
             startBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
             startBtn.classList.add('bg-slate-600', 'hover:bg-slate-500');
 
+            const attya_config = {
+                voicing: voicing,
+                totalChords: attya_chords.length
+            };
+            sessionLogStartSession('attya', attya_config);
             attyaUpdateChartHighlight();
             attyaShowChallenge();
         }
 
         function attyaStopGame() {
+            sessionLogEndSession();
             attya_isPlaying = false;
 
             document.getElementById('attya_settingsPanel').classList.remove('hidden');
@@ -14354,6 +14701,7 @@
             document.getElementById('attya_feedbackText').textContent = '';
             attya_currentFirstTry = true;
             attya_challengeStartTime = Date.now();
+            sessionLogStartRound({ chord: chord.symbol, bar: chord.bar, section: chord.section, voicingType: current.voicingType });
         }
 
         function attyaOnNoteOn(midi) {
@@ -14410,6 +14758,13 @@
                 // Show success feedback
                 document.getElementById('attya_feedbackText').innerHTML = '<span class="text-green-400">Correct!</span>';
 
+                sessionLogEndRound({
+                    responseTime: responseTime,
+                    isFirstTry: attya_currentFirstTry,
+                    correct: true,
+                    slow: responseTime > 2000
+                });
+
                 // Flash correct keys
                 for (const note of attya_heldNotes) {
                     highlightKey('attya_pianoSvg', note, 'key-correct', true);
@@ -14451,6 +14806,7 @@
         }
 
         function attyaEndGame() {
+            sessionLogEndSession();
             attya_isPlaying = false;
 
             // Calculate final stats
@@ -14685,6 +15041,13 @@
             vl_waitingForRelease = false;
 
             vl_totalRounds = parseInt(document.getElementById('vl_roundsSelect').value);
+            const vl_config = {
+                totalRounds: vl_totalRounds,
+                progressionType: document.getElementById('vl_progressionSelect').value,
+                voicingType: document.getElementById('vl_voicingSelect').value,
+                showAnalysis: document.getElementById('vl_showAnalysis').checked
+            };
+            sessionLogStartSession('voicelead', vl_config);
             document.getElementById('vl_totalRounds').textContent = vl_totalRounds;
 
             // Update button
@@ -14727,6 +15090,7 @@
         }
 
         function vlStopGame() {
+            sessionLogEndSession();
             vl_isPlaying = false;
             vl_challenge = null;
             vl_heldNotes.clear();
@@ -14788,6 +15152,7 @@
             // Update UI for source phase
             vlUpdatePhaseDisplay();
             vl_challengeStartTime = Date.now();
+            sessionLogStartRound(vl_challenge);
         }
 
         function vlUpdatePhaseDisplay() {
@@ -14911,6 +15276,13 @@
                     document.getElementById('vl_feedbackText').textContent = '✓ Voice leading complete!';
                     document.getElementById('vl_feedbackText').className = 'text-lg font-semibold text-center h-7 mb-4 text-green-400';
 
+                    sessionLogEndRound({
+                        responseTime: responseTime,
+                        isFirstTry: vl_firstTryThisRound,
+                        correct: true,
+                        slow: responseTime > 2000
+                    });
+
                     // Wait for release before next challenge
                     vl_waitingForRelease = 'toNext'; // Special flag: go to next challenge after release
                 } else if (hasWrongNote) {
@@ -14944,6 +15316,7 @@
         }
 
         function vlEndGame() {
+            sessionLogEndSession();
             vl_isPlaying = false;
 
             const avgTime = vl_responseTimes.length > 0 ?
@@ -15035,6 +15408,36 @@
             }
         }
 
+        // ============ SESSION LOG PANEL ============
+        function toggleSessionLogPanel() {
+            const panel = document.getElementById('sessionLogPanel');
+            const btn = document.getElementById('sessionLogExpandBtn');
+            const svg = btn.querySelector('svg');
+            if (panel.classList.contains('hidden')) {
+                expandSessionLogPanel();
+            } else {
+                collapseSessionLogPanel();
+            }
+        }
+
+        function expandSessionLogPanel() {
+            const panel = document.getElementById('sessionLogPanel');
+            const btn = document.getElementById('sessionLogExpandBtn');
+            const svg = btn.querySelector('svg');
+            panel.classList.remove('hidden');
+            svg.style.transform = 'rotate(180deg)';
+            saveAllSettings();
+        }
+
+        function collapseSessionLogPanel() {
+            const panel = document.getElementById('sessionLogPanel');
+            const btn = document.getElementById('sessionLogExpandBtn');
+            const svg = btn.querySelector('svg');
+            panel.classList.add('hidden');
+            svg.style.transform = 'rotate(0deg)';
+            saveAllSettings();
+        }
+
         // ============ INIT ============
         drawPiano('previewPianoSvg');
         drawPiano('pianoSvg');
@@ -15088,6 +15491,8 @@
         attyaLoadHistory();
         vlLoadHistory();
         loadAllSettings();
+        sessionLogLoadFromStorage();
+        updateSessionLogUI();
         // Show breakdown sections with cumulative stats on page load
         intShowBreakdown();
         chShowBreakdown();
