@@ -203,10 +203,14 @@ which corrupts timing data with values like 1767892319000ms.
 
 1. Add mode button to mode selector grid
 2. Add panel HTML following structure above
-3. Register in `switchMode()` modeButtons and modePanels objects
-4. Add MIDI handlers in `onNoteOn()` and `onNoteOff()`
-5. Add settings to `saveAllSettings()` and `loadAllSettings()`
-6. Add `drawPiano()` and `loadHistory()` calls to INIT section
+3. Add an entry to `MODE_REGISTRY` array — this automatically handles:
+   - Mode switching (switchMode)
+   - MIDI routing (handleMIDI)
+   - Piano drawing on init and resize
+   - History loading and breakdown display on init
+4. Use `{prefix}_history` and `{prefix}_cumulativeStats` for localStorage keys
+5. Use `timerClass(seconds)` helper for timer color classes (or `timerClass(seconds, 3, 6)` for scales)
+6. Add settings to `saveAllSettings()` and `loadAllSettings()`
 7. Update README.md with new mode
 8. Update IDEAS.md to mark as implemented if applicable
 
