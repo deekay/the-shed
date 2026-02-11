@@ -257,6 +257,9 @@
                 <button id="voiceleadMode" onclick="switchMode('voicelead')" title="Voice Leading Trainer: learn to find smooth voice leading between chords by identifying common tones and resolutions" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
                     20. Voice Leading
                 </button>
+                <button id="chordModMode" onclick="switchMode('chordMod')" title="Chord Modification: learn altered voicings by modifying one note in a standard voicing" class="mode-btn px-4 py-2 rounded text-sm font-semibold transition">
+                    21. Chord Mods
+                </button>
             </div>
             <!-- Charts Modes -->
             <div id="chartsModes" class="hidden flex flex-wrap items-center gap-2">
@@ -2114,9 +2117,15 @@
                             <label class="text-sm text-slate-400 block mb-2">Chord Type:</label>
                             <select id="dom7v_chordTypeSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
                                 <option value="all" selected>All Types</option>
-                                <option value="maj7">Major 7 only</option>
-                                <option value="min7">Minor 7 only</option>
-                                <option value="dom7">Dominant 7 only</option>
+                                <option value="standard">Standard (Maj7/m7/7)</option>
+                                <option value="altered">Altered (7#5/7b9/m7b5/°7)</option>
+                                <option value="maj7">Major 7</option>
+                                <option value="min7">Minor 7</option>
+                                <option value="dom7">Dominant 7</option>
+                                <option value="7sharp5">7#5</option>
+                                <option value="7b9">7b9</option>
+                                <option value="m7b5">m7b5</option>
+                                <option value="o7">°7</option>
                             </select>
                         </div>
                         <div>
@@ -3605,6 +3614,171 @@
             </div>
         </div>
 
+        <!-- Chord Modification Panel -->
+        <div id="chordModPanel" class="mode-panel hidden">
+            <div class="bg-slate-800 rounded-lg p-6 mb-6 shadow-lg relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h2 class="text-xl font-semibold text-white">Chord Modification</h2>
+                            <button onclick="document.getElementById('chordModInfoModal').classList.remove('hidden')" class="text-slate-400 hover:text-white transition" title="About chord modification">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            </button>
+                        </div>
+                        <p class="text-sm text-slate-400">Play the <span class="text-blue-400">base voicing</span>, then <span class="text-amber-400">modify one note</span></p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm text-slate-400">Avg Time</p>
+                        <p id="cmod_responseTime" class="text-2xl font-mono timer-fast">--</p>
+                    </div>
+                </div>
+
+                <!-- Settings -->
+                <div id="cmod_settingsPanel" class="mb-6 p-4 bg-slate-900 rounded-lg">
+                    <div class="flex flex-wrap gap-4 items-end">
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Modification:</label>
+                            <select id="cmod_modTypeSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="all" selected>All Types</option>
+                                <option value="0">7 → 7#5 (raise 5th)</option>
+                                <option value="1">7 → 7b9 (lower 9th)</option>
+                                <option value="2">m7 → m7b5 (lower 5th)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Voicing:</label>
+                            <select id="cmod_voicingSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="A" selected>Type A (3-5-7-9)</option>
+                                <option value="B">Type B (7-9-3-5)</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="text-sm text-slate-400 block mb-2">Rounds:</label>
+                            <select id="cmod_roundsSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                                <option value="6">6</option>
+                                <option value="12" selected>12</option>
+                                <option value="24">24</option>
+                            </select>
+                        </div>
+                        <div class="flex items-center gap-2 ml-4">
+                            <input type="checkbox" id="cmod_showHints" class="w-4 h-4 rounded bg-slate-700 border-slate-600" checked>
+                            <label for="cmod_showHints" class="text-sm text-slate-400">Show note hints</label>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-3">Learn altered voicings as one-note modifications of standard rootless voicings.</p>
+                </div>
+
+                <!-- Challenge Display -->
+                <div id="cmod_challengeDisplay" class="mb-6 hidden">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <!-- Base Chord -->
+                        <div id="cmod_baseBox" class="p-4 bg-slate-900 rounded-lg text-center transition-all">
+                            <p class="text-slate-400 text-sm mb-1">BASE</p>
+                            <p id="cmod_baseChord" class="text-3xl font-bold text-white mb-2">G7</p>
+                            <p id="cmod_baseNotes" class="text-lg text-blue-400"></p>
+                        </div>
+                        <!-- Target Chord -->
+                        <div id="cmod_targetBox" class="p-4 bg-slate-900 rounded-lg text-center transition-all opacity-50">
+                            <p class="text-slate-400 text-sm mb-1">TARGET</p>
+                            <p id="cmod_targetChord" class="text-3xl font-bold text-white mb-2">G7#5</p>
+                            <p id="cmod_targetHint" class="text-lg text-amber-400"></p>
+                        </div>
+                    </div>
+
+                    <!-- Modification hint -->
+                    <div id="cmod_modHintPanel" class="mb-4 p-3 bg-slate-700/30 rounded-lg text-center hidden">
+                        <p id="cmod_modDescription" class="text-sm text-amber-400 font-mono"></p>
+                    </div>
+
+                    <!-- Feedback -->
+                    <p id="cmod_feedbackText" class="text-lg font-semibold text-center h-7 mb-4"></p>
+                </div>
+
+                <!-- Game Complete Display -->
+                <div id="cmod_completeDisplay" class="mb-6 p-8 bg-slate-900 rounded-lg text-center hidden">
+                    <h3 class="text-3xl font-bold text-green-400 mb-4">Practice Complete!</h3>
+                    <div class="grid grid-cols-4 gap-4 mb-4 text-center">
+                        <div>
+                            <p class="text-slate-400 text-sm">Rounds</p>
+                            <p id="cmod_finalRounds" class="text-2xl font-bold text-white">12</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Avg Time</p>
+                            <p id="cmod_finalAvgTime" class="text-2xl font-bold text-purple-400">--</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">1st Try</p>
+                            <p id="cmod_finalFirstTry" class="text-2xl font-bold text-green-400">0%</p>
+                        </div>
+                        <div>
+                            <p class="text-slate-400 text-sm">Mistakes</p>
+                            <p id="cmod_finalMistakes" class="text-2xl font-bold text-red-400">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Piano Container -->
+                <div class="flex justify-center mb-6">
+                    <svg id="cmod_pianoSvg" viewBox="0 0 700 150" class="max-w-full h-auto"></svg>
+                </div>
+
+                <!-- Controls -->
+                <div class="flex justify-between items-center">
+                    <div class="space-x-4">
+                        <button id="cmod_startBtn" onclick="cmodStartGame()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-6 rounded transition">
+                            Start Game
+                        </button>
+                    </div>
+                    <div class="flex gap-4 text-xs text-slate-400">
+                        <span>Round: <span id="cmod_roundDisplay" class="font-mono">0</span>/<span id="cmod_totalRounds" class="font-mono">12</span></span>
+                        <span class="text-green-400">1st Try: <span id="cmod_firstTry" class="font-mono">0%</span></span>
+                        <span class="text-red-400">Mistakes: <span id="cmod_mistakes" class="font-mono">0</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div id="cmod_historyContent" class="bg-slate-800 rounded-lg p-6 shadow-lg mb-6"></div>
+        </div>
+
+        <!-- Chord Modification Info Modal -->
+        <div id="chordModInfoModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50" onclick="if(event.target === this) this.classList.add('hidden')">
+            <div class="bg-slate-800 rounded-lg p-6 max-w-lg mx-4 max-h-[80vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white">Chord Modification Drill</h3>
+                    <button onclick="document.getElementById('chordModInfoModal').classList.add('hidden')" class="text-slate-400 hover:text-white">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                <div class="text-sm text-slate-300 space-y-4">
+                    <div>
+                        <div class="text-amber-400 font-semibold mb-1">What is this?</div>
+                        <p>This drill teaches you to think of altered voicings as <strong>one-note modifications</strong> of standard rootless voicings you already know.</p>
+                    </div>
+                    <div>
+                        <div class="text-amber-400 font-semibold mb-1">How it works</div>
+                        <ol class="list-decimal list-inside text-slate-400 mt-1 space-y-1">
+                            <li>First, play the <span class="text-blue-400">base chord</span> (a standard rootless voicing)</li>
+                            <li>Then <span class="text-amber-400">modify one note</span> to create the altered version (timed)</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <div class="text-amber-400 font-semibold mb-1">The modifications</div>
+                        <ul class="text-slate-400 mt-1 space-y-1">
+                            <li><strong>7 → 7#5:</strong> Raise the 5th by ½ step</li>
+                            <li><strong>7 → 7b9:</strong> Lower the 9th by ½ step</li>
+                            <li><strong>m7 → m7b5:</strong> Lower the 5th by ½ step</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div class="text-amber-400 font-semibold mb-1">Why this matters</div>
+                        <p class="text-slate-400">Instead of memorizing altered voicings from scratch, you learn them as simple changes to voicings you already know. One finger moves, everything else stays!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Footer -->
         <footer class="text-center text-slate-500 text-sm mt-8 pt-4 pb-16 border-t border-slate-700">
             <span class="font-semibold text-slate-400">The Shed</span> · Feedback? DM <a href="https://twitter.com/dksf" target="_blank" class="text-amber-400 hover:text-amber-300">@dksf</a> on Twitter/X
@@ -4042,6 +4216,10 @@
 
         // ============ MEDAL HELPER ============
         // Returns medal emoji for personal bests: 🥇 gold, 🥈 silver, 🥉 bronze
+        function timerClass(seconds, fastBelow = 2, medBelow = 4) {
+            return seconds < fastBelow ? 'timer-fast' : seconds < medBelow ? 'timer-medium' : 'timer-slow';
+        }
+
         function getMedals(history, accuracyField = 'firstTryPct', timeField = 'avgTime') {
             if (history.length === 0) return {};
 
@@ -4297,15 +4475,136 @@
             }
         }
 
+        // ============ MODE REGISTRY ============
+        // Central registry of all practice modes. To add a new mode, add an entry here
+        // and it will automatically be included in MIDI routing, piano init, and history loading.
+        // New modes should use {prefix}_history and {prefix}_cumulativeStats for localStorage keys.
+        const MODE_REGISTRY = [
+            { key: 'intervals',  prefix: 'int',       btnId: 'intervalsMode',  panelId: 'intervalsPanel',  pianoSvg: 'pianoSvg',           historyKey: 'intervalGameHistory',     cumulativeKey: 'intervalCumulativeStats',     onNoteOn: n => intOnNoteOn(n),          onNoteOff: n => intOnNoteOff(n),          loadHistory: () => intLoadHistory(),       showBreakdown: () => intShowBreakdown(),       category: 'training' },
+            { key: 'chords',     prefix: 'ch',        btnId: 'chordsMode',     panelId: 'chordsPanel',     pianoSvg: 'ch_pianoSvg',        historyKey: 'chordsGameHistory',       cumulativeKey: 'chordsCumulativeStats',       onNoteOn: n => chOnNoteOn(n),           onNoteOff: n => chOnNoteOff(n),           loadHistory: () => chLoadHistory(),        showBreakdown: () => chShowBreakdown(),        category: 'training' },
+            { key: 'iivi',       prefix: 'iivi',      btnId: 'iiviMode',       panelId: 'iiviPanel',       pianoSvg: 'iivi_pianoSvg',      historyKey: 'iiviGameHistory',         cumulativeKey: 'iiviCumulativeStats',         onNoteOn: n => iiviOnNoteOn(n),         onNoteOff: n => iiviOnNoteOff(n),         loadHistory: () => iiviLoadHistory(),      showBreakdown: () => iiviShowBreakdown(),      category: 'training' },
+            { key: 'scales',     prefix: 'sc',        btnId: 'scalesMode',     panelId: 'scalesPanel',     pianoSvg: 'sc_pianoSvg',        historyKey: 'scGameHistory',           cumulativeKey: 'scCumulativeStats',           onNoteOn: n => scOnNoteOn(n),           onNoteOff: n => scOnNoteOff(n),           loadHistory: () => scLoadHistory(),        showBreakdown: () => scShowBreakdown(),        category: 'training' },
+            { key: 'ext',        prefix: 'ext',       btnId: 'extMode',        panelId: 'extPanel',        pianoSvg: 'ext_pianoSvg',       historyKey: 'extGameHistory',          cumulativeKey: 'extCumulativeStats',          onNoteOn: n => extOnNoteOn(n),          onNoteOff: n => extOnNoteOff(n),          loadHistory: () => extLoadHistory(),       showBreakdown: () => extShowBreakdown(),       category: 'training' },
+            { key: 'alt',        prefix: 'alt',       btnId: 'altMode',        panelId: 'altPanel',        pianoSvg: 'alt_pianoSvg',       historyKey: 'altGameHistory',          cumulativeKey: 'altCumulativeStats',          onNoteOn: n => altOnNoteOn(n),          onNoteOff: n => altOnNoteOff(n),          loadHistory: () => altLoadHistory(),       showBreakdown: () => altShowBreakdown(),       category: 'training' },
+            { key: 'adv',        prefix: 'adv',       btnId: 'advMode',        panelId: 'advPanel',        pianoSvg: 'adv_pianoSvg',       historyKey: 'advGameHistory',          cumulativeKey: 'advCumulativeStats',          onNoteOn: n => advOnNoteOn(n),          onNoteOff: n => advOnNoteOff(n),          loadHistory: () => advLoadHistory(),       showBreakdown: () => advShowBreakdown(),       category: 'training' },
+            { key: 'minorIivi',  prefix: 'miivi',     btnId: 'minorIiviMode',  panelId: 'minorIiviPanel',  pianoSvg: 'miivi_pianoSvg',     historyKey: 'minorIiviGameHistory',    cumulativeKey: 'miiviCumulativeStats',        onNoteOn: n => miiviOnNoteOn(n),        onNoteOff: n => miiviOnNoteOff(n),        loadHistory: () => miiviLoadHistory(),     showBreakdown: () => miiviShowBreakdown(),     category: 'training' },
+            { key: 'kb',         prefix: 'kb',        btnId: 'kbMode',         panelId: 'kbPanel',         pianoSvg: 'kb_pianoSvg',        historyKey: 'kbGameHistory',           cumulativeKey: 'kbCumulativeStats',           onNoteOn: n => kbHandleNoteOn(n),       onNoteOff: n => kbHandleNoteOff(n),       loadHistory: () => kbLoadHistory(),        showBreakdown: () => kbShowBreakdown(),        category: 'training' },
+            { key: 'jtou',       prefix: 'jtou',      btnId: 'jtouMode',       panelId: 'jtouPanel',       pianoSvg: 'jtou_pianoSvg',      historyKey: 'jtouGameHistory',         cumulativeKey: 'jtouCumulativeStats',         onNoteOn: n => jtouOnNoteOn(n),         onNoteOff: n => jtouOnNoteOff(n),         loadHistory: () => jtouLoadHistory(),      showBreakdown: () => jtouShowBreakdown(),      category: 'training' },
+            { key: 'dom7v',      prefix: 'dom7v',     btnId: 'dom7vMode',      panelId: 'dom7vPanel',      pianoSvg: 'dom7v_pianoSvg',     historyKey: 'dom7vGameHistory',        cumulativeKey: 'dom7vCumulativeStats',        onNoteOn: n => dom7vOnNoteOn(n),        onNoteOff: n => dom7vOnNoteOff(n),        loadHistory: () => dom7vLoadHistory(),     showBreakdown: () => dom7vShowBreakdown(),     category: 'training' },
+            { key: 'extv',       prefix: 'extv',      btnId: 'extvMode',       panelId: 'extvPanel',       pianoSvg: 'extv_pianoSvg',      historyKey: 'extvGameHistory',         cumulativeKey: 'extvCumulativeStats',         onNoteOn: n => extvOnNoteOn(n),         onNoteOff: n => extvOnNoteOff(n),         loadHistory: () => extvLoadHistory(),      showBreakdown: () => extvShowBreakdown(),      category: 'training' },
+            { key: 'pent',       prefix: 'pent',      btnId: 'pentMode',       panelId: 'pentPanel',       pianoSvg: 'pent_pianoSvg',      historyKey: 'pentHistory',             cumulativeKey: 'pentCumulativeStats',         onNoteOn: n => pentOnNoteOn(n),         onNoteOff: n => pentOnNoteOff(n),         loadHistory: () => pentLoadHistory(),      showBreakdown: () => pentShowBreakdown(),      category: 'training' },
+            { key: 'bebop',      prefix: 'bebop',     btnId: 'bebopMode',      panelId: 'bebopPanel',      pianoSvg: 'bebop_pianoSvg',     historyKey: 'bebop_history',           cumulativeKey: 'bebop_cumulativeStats',       onNoteOn: n => bebopOnNoteOn(n),        onNoteOff: n => bebopOnNoteOff(n),        loadHistory: () => bebopLoadHistory(),     showBreakdown: () => bebopShowBreakdown(),     category: 'training' },
+            { key: 'tritone',    prefix: 'tritone',   btnId: 'tritoneMode',    panelId: 'tritonePanel',    pianoSvg: 'tritone_pianoSvg',   historyKey: 'tritone_history',         cumulativeKey: 'tritone_cumulativeStats',     onNoteOn: n => tritoneOnNoteOn(n),      onNoteOff: n => tritoneOnNoteOff(n),      loadHistory: () => tritoneLoadHistory(),   showBreakdown: () => tritoneShowBreakdown(),   category: 'training' },
+            { key: 'shell',      prefix: 'shell',     btnId: 'shellMode',      panelId: 'shellPanel',      pianoSvg: 'shell_pianoSvg',     historyKey: 'shell_history',           cumulativeKey: 'shell_cumulativeStats',       onNoteOn: n => shellOnNoteOn(n),        onNoteOff: n => shellOnNoteOff(n),        loadHistory: () => shellLoadHistory(),     showBreakdown: () => shellShowBreakdown(),     category: 'training' },
+            { key: 'upper',      prefix: 'upper',     btnId: 'upperMode',      panelId: 'upperPanel',      pianoSvg: 'upper_pianoSvg',     historyKey: 'upper_history',           cumulativeKey: 'upper_cumulativeStats',       onNoteOn: n => upperOnNoteOn(n),        onNoteOff: n => upperOnNoteOff(n),        loadHistory: () => upperLoadHistory(),     showBreakdown: () => upperShowBreakdown(),     category: 'training' },
+            { key: 'freestyle',  prefix: 'freestyle', btnId: 'freestyleMode',  panelId: 'freestylePanel',  pianoSvg: 'freestyle_pianoSvg', historyKey: 'freestyle_history',       cumulativeKey: 'freestyle_cumulativeStats',   onNoteOn: n => freestyleOnNoteOn(n),    onNoteOff: n => freestyleOnNoteOff(n),    loadHistory: () => freestyleLoadHistory(), showBreakdown: () => freestyleShowBreakdown(), category: 'training' },
+            { key: 'attya',      prefix: 'attya',     btnId: 'attyaMode',      panelId: 'attyaPanel',      pianoSvg: 'attya_pianoSvg',     historyKey: 'attya_history',           cumulativeKey: null,                          onNoteOn: n => attyaOnNoteOn(n),        onNoteOff: n => attyaOnNoteOff(n),        loadHistory: () => attyaLoadHistory(),     showBreakdown: null,                           category: 'charts' },
+            { key: 'voicelead',  prefix: 'vl',        btnId: 'voiceleadMode',  panelId: 'voiceleadPanel',  pianoSvg: 'vl_pianoSvg',        historyKey: 'vl_history',              cumulativeKey: null,                          onNoteOn: n => vlOnNoteOn(n),           onNoteOff: n => vlOnNoteOff(n),           loadHistory: () => vlLoadHistory(),        showBreakdown: null,                           category: 'training' },
+            { key: 'chordMod',   prefix: 'cmod',      btnId: 'chordModMode',   panelId: 'chordModPanel',   pianoSvg: 'cmod_pianoSvg',      historyKey: 'cmod_history',            cumulativeKey: null,                          onNoteOn: n => cmodOnNoteOn(n),         onNoteOff: n => cmodOnNoteOff(n),         loadHistory: () => cmodLoadHistory(),      showBreakdown: null,                           category: 'training' },
+        ];
+
+        // Build lookup map for fast access by mode key
+        const MODE_MAP = {};
+        MODE_REGISTRY.forEach(m => MODE_MAP[m.key] = m);
+
+        // ============ SHARED MODE UTILITIES ============
+        // Generic implementations of per-mode boilerplate functions.
+        // See tests/test-tier1.js for comprehensive tests.
+
+        // Problem areas using score-based ranking (successRate + slowRate).
+        // Used by: int, ch, iivi, sc, ext, alt, adv, miivi, kb, jtou, dom7v
+        function getGenericProblemAreas(cumulativeStats, minAttempts) {
+            if (!cumulativeStats) return [];
+            if (minAttempts === undefined) minAttempts = 5;
+            const areas = [];
+            for (const [name, data] of Object.entries(cumulativeStats)) {
+                if (data.attempts >= minAttempts) {
+                    const successRate = (data.firstTry / data.attempts) * 100;
+                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
+                    const avgTime = data.totalTime / data.attempts;
+                    const problemScore = (100 - successRate) + slowRate;
+                    areas.push({
+                        name, successRate, slowRate, avgTime,
+                        attempts: data.attempts, firstTry: data.firstTry,
+                        slow: data.slow || 0, problemScore
+                    });
+                }
+            }
+            return areas.sort((a, b) => b.problemScore - a.problemScore);
+        }
+
+        // Problem areas using mistake-rate filtering.
+        // Used by: bebop, tritone, shell, upper, freestyle, pent (with avgTimeThreshold)
+        function getGenericMistakeAreas(cumulativeStats, minAttempts, opts) {
+            if (!cumulativeStats) return [];
+            if (minAttempts === undefined) minAttempts = 3;
+            opts = opts || {};
+            const maxResults = opts.maxResults || 5;
+            const avgTimeThreshold = opts.avgTimeThreshold || null;
+            const dominated = [];
+            for (const [key, data] of Object.entries(cumulativeStats)) {
+                if (data.attempts >= minAttempts) {
+                    const mistakeRate = data.mistakes / data.attempts;
+                    let avgTime = 0;
+                    if (data.times && data.times.length > 0) {
+                        avgTime = data.times.reduce((a, b) => a + b, 0) / data.times.length;
+                    }
+                    if (mistakeRate > 0.3 || (avgTimeThreshold && avgTime > avgTimeThreshold)) {
+                        dominated.push({ key, mistakeRate, avgTime, attempts: data.attempts });
+                    }
+                }
+            }
+            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, maxResults);
+        }
+
+        // Merge session stats into cumulative stats (time-based pattern).
+        // Used by: int, ch, iivi, sc, ext, alt, adv, miivi, kb, jtou, dom7v, extv
+        function updateGenericCumulativeStats(storageKey, sessionStats, cumulativeStats) {
+            for (const [name, data] of Object.entries(sessionStats)) {
+                if (!cumulativeStats[name]) {
+                    cumulativeStats[name] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
+                }
+                cumulativeStats[name].attempts += data.total;
+                cumulativeStats[name].firstTry += data.firstTry;
+                cumulativeStats[name].totalTime += data.times.reduce((a, b) => a + b, 0);
+                cumulativeStats[name].slow += (data.slow || 0);
+            }
+            localStorage.setItem(storageKey, JSON.stringify(cumulativeStats));
+        }
+
+        // Merge session stats into cumulative stats (mistake-based pattern).
+        // Used by: bebop, tritone, shell, upper, freestyle
+        function updateMistakeCumulativeStats(storageKey, sessionStats, cumulativeStats) {
+            for (const [key, stat] of Object.entries(sessionStats)) {
+                if (!cumulativeStats[key]) {
+                    cumulativeStats[key] = { attempts: 0, mistakes: 0 };
+                }
+                cumulativeStats[key].attempts += stat.attempts;
+                cumulativeStats[key].mistakes += stat.mistakes;
+            }
+            localStorage.setItem(storageKey, JSON.stringify(cumulativeStats));
+        }
+
+        // Clear history and cumulative stats from localStorage.
+        // Returns true if confirmed, false if cancelled.
+        // Caller must clear in-memory state (e.g. int_history = []).
+        function clearGenericHistory(historyKey, cumulativeKey, renderFn) {
+            if (!confirm('Clear all history and statistics for this mode?')) return false;
+            localStorage.removeItem(historyKey);
+            if (cumulativeKey) localStorage.removeItem(cumulativeKey);
+            renderFn();
+            return true;
+        }
+
         // ============ MODE SWITCHING ============
         function switchMode(mode) {
             currentMode = mode;
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            const modeButtons = { intervals: 'intervalsMode', chords: 'chordsMode', iivi: 'iiviMode', scales: 'scalesMode', ext: 'extMode', alt: 'altMode', adv: 'advMode', minorIivi: 'minorIiviMode', kb: 'kbMode', jtou: 'jtouMode', dom7v: 'dom7vMode', extv: 'extvMode', pent: 'pentMode', bebop: 'bebopMode', tritone: 'tritoneMode', shell: 'shellMode', upper: 'upperMode', freestyle: 'freestyleMode', attya: 'attyaMode', voicelead: 'voiceleadMode' };
-            const modePanels = { intervals: 'intervalsPanel', chords: 'chordsPanel', iivi: 'iiviPanel', scales: 'scalesPanel', ext: 'extPanel', alt: 'altPanel', adv: 'advPanel', minorIivi: 'minorIiviPanel', kb: 'kbPanel', jtou: 'jtouPanel', dom7v: 'dom7vPanel', extv: 'extvPanel', pent: 'pentPanel', bebop: 'bebopPanel', tritone: 'tritonePanel', shell: 'shellPanel', upper: 'upperPanel', freestyle: 'freestylePanel', attya: 'attyaPanel', voicelead: 'voiceleadPanel' };
-            document.getElementById(modeButtons[mode]).classList.add('active');
+            const entry = MODE_MAP[mode];
+            if (!entry) return;
+            document.getElementById(entry.btnId).classList.add('active');
             document.querySelectorAll('.mode-panel').forEach(panel => panel.classList.add('hidden'));
-            document.getElementById(modePanels[mode]).classList.remove('hidden');
+            document.getElementById(entry.panelId).classList.remove('hidden');
         }
 
         // ============ MIDI SETUP ============
@@ -4454,56 +4753,17 @@
 
         function handleMIDI(msg) {
             const [cmd, note, vel] = msg.data;
+            const entry = MODE_MAP[currentMode];
             if ((cmd & 0xF0) === 144 && vel > 0) {
                 heldNotes.add(note);
                 updateChordIdentifier();
-                // Highlight preview piano (for testing before game starts)
                 highlightKey('previewPianoSvg', note, 'key-active');
-                if (currentMode === 'intervals') intOnNoteOn(note);
-                else if (currentMode === 'chords') chOnNoteOn(note);
-                else if (currentMode === 'iivi') iiviOnNoteOn(note);
-                else if (currentMode === 'scales') scOnNoteOn(note);
-                else if (currentMode === 'ext') extOnNoteOn(note);
-                else if (currentMode === 'alt') altOnNoteOn(note);
-                else if (currentMode === 'adv') advOnNoteOn(note);
-                else if (currentMode === 'minorIivi') miiviOnNoteOn(note);
-                else if (currentMode === 'kb') kbHandleNoteOn(note);
-                else if (currentMode === 'jtou') jtouOnNoteOn(note);
-                else if (currentMode === 'dom7v') dom7vOnNoteOn(note);
-                else if (currentMode === 'extv') extvOnNoteOn(note);
-                else if (currentMode === 'pent') pentOnNoteOn(note);
-                else if (currentMode === 'bebop') bebopOnNoteOn(note);
-                else if (currentMode === 'tritone') tritoneOnNoteOn(note);
-                else if (currentMode === 'shell') shellOnNoteOn(note);
-                else if (currentMode === 'upper') upperOnNoteOn(note);
-                else if (currentMode === 'freestyle') freestyleOnNoteOn(note);
-                else if (currentMode === 'attya') attyaOnNoteOn(note);
-                else if (currentMode === 'voicelead') vlOnNoteOn(note);
+                if (entry) entry.onNoteOn(note);
             } else if ((cmd & 0xF0) === 128 || ((cmd & 0xF0) === 144 && vel === 0)) {
                 heldNotes.delete(note);
                 updateChordIdentifier();
-                // Clear preview piano highlight
                 highlightKey('previewPianoSvg', note, 'key-active', false);
-                if (currentMode === 'intervals') intOnNoteOff(note);
-                else if (currentMode === 'chords') chOnNoteOff(note);
-                else if (currentMode === 'iivi') iiviOnNoteOff(note);
-                else if (currentMode === 'scales') scOnNoteOff(note);
-                else if (currentMode === 'ext') extOnNoteOff(note);
-                else if (currentMode === 'alt') altOnNoteOff(note);
-                else if (currentMode === 'adv') advOnNoteOff(note);
-                else if (currentMode === 'minorIivi') miiviOnNoteOff(note);
-                else if (currentMode === 'kb') kbHandleNoteOff(note);
-                else if (currentMode === 'jtou') jtouOnNoteOff(note);
-                else if (currentMode === 'dom7v') dom7vOnNoteOff(note);
-                else if (currentMode === 'extv') extvOnNoteOff(note);
-                else if (currentMode === 'pent') pentOnNoteOff(note);
-                else if (currentMode === 'bebop') bebopOnNoteOff(note);
-                else if (currentMode === 'tritone') tritoneOnNoteOff(note);
-                else if (currentMode === 'shell') shellOnNoteOff(note);
-                else if (currentMode === 'upper') upperOnNoteOff(note);
-                else if (currentMode === 'freestyle') freestyleOnNoteOff(note);
-                else if (currentMode === 'attya') attyaOnNoteOff(note);
-                else if (currentMode === 'voicelead') vlOnNoteOff(note);
+                if (entry) entry.onNoteOff(note);
             }
         }
 
@@ -4775,7 +5035,7 @@
         }
 
         function intOnNoteOn(midi) {
-            if (!int_isPlaying || !int_challenge) {
+            if (!int_isPlaying || !int_challenge || !int_challengeStartTime) {
                 highlightKey('pianoSvg', midi, 'key-active');
                 return;
             }
@@ -4834,7 +5094,7 @@
         function intUpdateResponseTime(seconds) {
             const el = document.getElementById('int_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function intUpdateScoreDisplay() {
@@ -4967,42 +5227,18 @@
         }
 
         function intClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            int_history = [];
-            int_cumulativeStats = {};
-            localStorage.removeItem('intervalGameHistory');
-            localStorage.removeItem('intervalCumulativeStats');
-            intRenderHistory();
+            if (clearGenericHistory('intervalGameHistory', 'intervalCumulativeStats', intRenderHistory)) {
+                int_history = [];
+                int_cumulativeStats = {};
+            }
         }
 
         function intUpdateCumulativeStats() {
-            // Merge current game stats into cumulative stats
-            for (const [intervalName, data] of Object.entries(int_stats)) {
-                if (!int_cumulativeStats[intervalName]) {
-                    int_cumulativeStats[intervalName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                int_cumulativeStats[intervalName].attempts += data.total;
-                int_cumulativeStats[intervalName].firstTry += data.firstTry;
-                int_cumulativeStats[intervalName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                int_cumulativeStats[intervalName].slow += data.slow || 0;
-            }
-            localStorage.setItem('intervalCumulativeStats', JSON.stringify(int_cumulativeStats));
+            updateGenericCumulativeStats('intervalCumulativeStats', int_stats, int_cumulativeStats);
         }
 
         function intGetProblemAreas() {
-            // Return intervals sorted by combined problem score (mistakes + slow)
-            const areas = [];
-            for (const [name, data] of Object.entries(int_cumulativeStats)) {
-                if (data.attempts >= 5) { // Only include intervals with enough data
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    // Combined problem score: lower success + higher slow = more problematic
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(int_cumulativeStats);
         }
 
         function intRenderHistory() {
@@ -5212,7 +5448,7 @@
         }
 
         function chOnNoteOn(midi) {
-            if (!ch_isPlaying || !ch_challenge) return;
+            if (!ch_isPlaying || !ch_challenge || !ch_challengeStartTime) return;
 
             highlightKey('ch_pianoSvg', midi, 'key-held');
 
@@ -5301,7 +5537,7 @@
         function chUpdateResponseTime(seconds) {
             const el = document.getElementById('ch_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function chUpdateScoreDisplay() {
@@ -5433,39 +5669,18 @@
         }
 
         function chUpdateCumulativeStats() {
-            for (const [chordName, data] of Object.entries(ch_stats)) {
-                if (!ch_cumulativeStats[chordName]) {
-                    ch_cumulativeStats[chordName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                ch_cumulativeStats[chordName].attempts += data.total;
-                ch_cumulativeStats[chordName].firstTry += data.firstTry;
-                ch_cumulativeStats[chordName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                ch_cumulativeStats[chordName].slow += data.slow || 0;
-            }
-            localStorage.setItem('chordsCumulativeStats', JSON.stringify(ch_cumulativeStats));
+            updateGenericCumulativeStats('chordsCumulativeStats', ch_stats, ch_cumulativeStats);
         }
 
         function chGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(ch_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(ch_cumulativeStats);
         }
 
         function chClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            ch_history = [];
-            ch_cumulativeStats = {};
-            localStorage.removeItem('chordsGameHistory');
-            localStorage.removeItem('chordsCumulativeStats');
-            chRenderHistory();
+            if (clearGenericHistory('chordsGameHistory', 'chordsCumulativeStats', chRenderHistory)) {
+                ch_history = [];
+                ch_cumulativeStats = {};
+            }
         }
 
         function chRenderHistory() {
@@ -5849,7 +6064,7 @@
         }
 
         function iiviOnNoteOn(midi) {
-            if (!iivi_isPlaying || !iivi_challenge) return;
+            if (!iivi_isPlaying || !iivi_challenge || !iivi_challengeStartTime) return;
 
             highlightKey('iivi_pianoSvg', midi, 'key-held');
 
@@ -6020,7 +6235,7 @@
         function iiviUpdateResponseTime(seconds) {
             const el = document.getElementById('iivi_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function iiviUpdateScoreDisplay() {
@@ -6158,39 +6373,18 @@
         }
 
         function iiviUpdateCumulativeStats() {
-            for (const [keyName, data] of Object.entries(iivi_stats)) {
-                if (!iivi_cumulativeStats[keyName]) {
-                    iivi_cumulativeStats[keyName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                iivi_cumulativeStats[keyName].attempts += data.total;
-                iivi_cumulativeStats[keyName].firstTry += data.firstTry;
-                iivi_cumulativeStats[keyName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                iivi_cumulativeStats[keyName].slow += data.slow || 0;
-            }
-            localStorage.setItem('iiviCumulativeStats', JSON.stringify(iivi_cumulativeStats));
+            updateGenericCumulativeStats('iiviCumulativeStats', iivi_stats, iivi_cumulativeStats);
         }
 
         function iiviGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(iivi_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(iivi_cumulativeStats);
         }
 
         function iiviClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            iivi_history = [];
-            iivi_cumulativeStats = {};
-            localStorage.removeItem('iiviGameHistory');
-            localStorage.removeItem('iiviCumulativeStats');
-            iiviRenderHistory();
+            if (clearGenericHistory('iiviGameHistory', 'iiviCumulativeStats', iiviRenderHistory)) {
+                iivi_history = [];
+                iivi_cumulativeStats = {};
+            }
         }
 
         function iiviRenderHistory() {
@@ -6520,7 +6714,7 @@
         }
 
         function scOnNoteOn(midi) {
-            if (!sc_isPlaying || !sc_challenge) return;
+            if (!sc_isPlaying || !sc_challenge || !sc_challengeStartTime) return;
 
             highlightKey('sc_pianoSvg', midi, 'key-held');
             if (sc_challenge.currentNoteIndex >= 7) return;
@@ -6588,7 +6782,7 @@
         function scUpdateResponseTime(seconds) {
             const el = document.getElementById('sc_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 3 ? 'timer-fast' : seconds < 6 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds, 3, 6);
         }
 
         function scUpdateScoreDisplay() {
@@ -6722,37 +6916,18 @@
         }
 
         function scUpdateCumulativeStats() {
-            for (const [scaleName, data] of Object.entries(sc_stats)) {
-                if (!sc_cumulativeStats[scaleName]) {
-                    sc_cumulativeStats[scaleName] = { attempts: 0, firstTry: 0, totalTime: 0 };
-                }
-                sc_cumulativeStats[scaleName].attempts += data.total;
-                sc_cumulativeStats[scaleName].firstTry += data.firstTry;
-                sc_cumulativeStats[scaleName].totalTime += data.times.reduce((a, b) => a + b, 0);
-            }
-            localStorage.setItem('scCumulativeStats', JSON.stringify(sc_cumulativeStats));
+            updateGenericCumulativeStats('scCumulativeStats', sc_stats, sc_cumulativeStats);
         }
 
         function scGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(sc_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = 100 - successRate; // No slow tracking for scales
-                    areas.push({ name, successRate, slowRate: 0, avgTime, attempts: data.attempts, firstTry: data.firstTry, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(sc_cumulativeStats);
         }
 
         function scClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            sc_history = [];
-            sc_cumulativeStats = {};
-            localStorage.removeItem('scGameHistory');
-            localStorage.removeItem('scCumulativeStats');
-            scRenderHistory();
+            if (clearGenericHistory('scGameHistory', 'scCumulativeStats', scRenderHistory)) {
+                sc_history = [];
+                sc_cumulativeStats = {};
+            }
         }
 
         function scRenderHistory() {
@@ -6981,7 +7156,7 @@
         }
 
         function extOnNoteOn(midi) {
-            if (!ext_isPlaying || !ext_challenge) return;
+            if (!ext_isPlaying || !ext_challenge || !ext_startTime) return;
 
             highlightKey('ext_pianoSvg', midi, 'key-held');
             ext_heldNotes.add(midi);
@@ -7168,26 +7343,14 @@
         }
 
         function extGetProblemAreas() {
-            // Return chords sorted by combined problem score (mistakes + slow)
-            const areas = [];
-            for (const [name, data] of Object.entries(ext_cumulativeStats)) {
-                if (data.attempts >= 3) { // Only include chords with enough data
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(ext_cumulativeStats, 3);
         }
 
         function extClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            ext_history = [];
-            ext_cumulativeStats = {};
-            localStorage.removeItem('extGameHistory');
-            localStorage.removeItem('extCumulativeStats');
-            extRenderHistory();
+            if (clearGenericHistory('extGameHistory', 'extCumulativeStats', extRenderHistory)) {
+                ext_history = [];
+                ext_cumulativeStats = {};
+            }
         }
 
         function extRenderHistory() {
@@ -7452,7 +7615,7 @@
         }
 
         function altOnNoteOn(midi) {
-            if (!alt_isPlaying || !alt_challenge) return;
+            if (!alt_isPlaying || !alt_challenge || !alt_startTime) return;
 
             highlightKey('alt_pianoSvg', midi, 'key-held');
             alt_heldNotes.add(midi);
@@ -7635,26 +7798,14 @@
         }
 
         function altGetProblemAreas() {
-            // Return chords sorted by combined problem score (mistakes + slow)
-            const areas = [];
-            for (const [name, data] of Object.entries(alt_cumulativeStats)) {
-                if (data.attempts >= 3) { // Only include chords with enough data
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(alt_cumulativeStats, 3);
         }
 
         function altClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            alt_history = [];
-            alt_cumulativeStats = {};
-            localStorage.removeItem('altGameHistory');
-            localStorage.removeItem('altCumulativeStats');
-            altRenderHistory();
+            if (clearGenericHistory('altGameHistory', 'altCumulativeStats', altRenderHistory)) {
+                alt_history = [];
+                alt_cumulativeStats = {};
+            }
         }
 
         function altRenderHistory() {
@@ -7905,7 +8056,7 @@
         }
 
         function advOnNoteOn(midi) {
-            if (!adv_isPlaying || !adv_challenge) return;
+            if (!adv_isPlaying || !adv_challenge || !adv_challengeStartTime) return;
 
             highlightKey('adv_pianoSvg', midi, 'key-held');
 
@@ -7984,7 +8135,7 @@
         function advUpdateResponseTime(seconds) {
             const el = document.getElementById('adv_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function advUpdateScoreDisplay() {
@@ -8117,39 +8268,18 @@
         }
 
         function advUpdateCumulativeStats() {
-            for (const [chordName, data] of Object.entries(adv_stats)) {
-                if (!adv_cumulativeStats[chordName]) {
-                    adv_cumulativeStats[chordName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                adv_cumulativeStats[chordName].attempts += data.total;
-                adv_cumulativeStats[chordName].firstTry += data.firstTry;
-                adv_cumulativeStats[chordName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                adv_cumulativeStats[chordName].slow += data.slow || 0;
-            }
-            localStorage.setItem('advCumulativeStats', JSON.stringify(adv_cumulativeStats));
+            updateGenericCumulativeStats('advCumulativeStats', adv_stats, adv_cumulativeStats);
         }
 
         function advGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(adv_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(adv_cumulativeStats);
         }
 
         function advClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            adv_history = [];
-            adv_cumulativeStats = {};
-            localStorage.removeItem('advGameHistory');
-            localStorage.removeItem('advCumulativeStats');
-            advRenderHistory();
+            if (clearGenericHistory('advGameHistory', 'advCumulativeStats', advRenderHistory)) {
+                adv_history = [];
+                adv_cumulativeStats = {};
+            }
         }
 
         function advRenderHistory() {
@@ -8440,7 +8570,7 @@
         }
 
         function miiviOnNoteOn(midi) {
-            if (!miivi_isPlaying || !miivi_challenge) return;
+            if (!miivi_isPlaying || !miivi_challenge || !miivi_challengeStartTime) return;
 
             highlightKey('miivi_pianoSvg', midi, 'key-held');
 
@@ -8572,7 +8702,7 @@
         function miiviUpdateResponseTime(seconds) {
             const el = document.getElementById('miivi_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function miiviUpdateScoreDisplay() {
@@ -8709,39 +8839,18 @@
         }
 
         function miiviUpdateCumulativeStats() {
-            for (const [keyName, data] of Object.entries(miivi_stats)) {
-                if (!miivi_cumulativeStats[keyName]) {
-                    miivi_cumulativeStats[keyName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                miivi_cumulativeStats[keyName].attempts += data.total;
-                miivi_cumulativeStats[keyName].firstTry += data.firstTry;
-                miivi_cumulativeStats[keyName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                miivi_cumulativeStats[keyName].slow += data.slow || 0;
-            }
-            localStorage.setItem('miiviCumulativeStats', JSON.stringify(miivi_cumulativeStats));
+            updateGenericCumulativeStats('miiviCumulativeStats', miivi_stats, miivi_cumulativeStats);
         }
 
         function miiviGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(miivi_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(miivi_cumulativeStats);
         }
 
         function miiviClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            miivi_history = [];
-            miivi_cumulativeStats = {};
-            localStorage.removeItem('minorIiviGameHistory');
-            localStorage.removeItem('miiviCumulativeStats');
-            miiviRenderHistory();
+            if (clearGenericHistory('minorIiviGameHistory', 'miiviCumulativeStats', miiviRenderHistory)) {
+                miivi_history = [];
+                miivi_cumulativeStats = {};
+            }
         }
 
         function miiviRenderHistory() {
@@ -9031,7 +9140,7 @@
         }
 
         function kbHandleNoteOn(note) {
-            if (!kb_gameActive || !kb_challenge) return;
+            if (!kb_gameActive || !kb_challenge || !kb_startTime) return;
 
             highlightKey('kb_pianoSvg', note, 'key-held');
 
@@ -9106,7 +9215,7 @@
                     const avgTime = kb_allTimes.reduce((a, b) => a + b, 0) / kb_allTimes.length;
                     const timerEl = document.getElementById('kb_responseTime');
                     timerEl.innerText = avgTime.toFixed(1) + 's';
-                    timerEl.className = 'text-2xl font-mono ' + (avgTime < 3 ? 'timer-fast' : avgTime < 6 ? 'timer-medium' : 'timer-slow');
+                    timerEl.className = 'text-2xl font-mono ' + timerClass(avgTime, 3, 6);
 
                     kbShowFeedback('✓', 'text-green-400');
                     setTimeout(kbNextChallenge, 800);
@@ -9236,39 +9345,18 @@
         }
 
         function kbUpdateCumulativeStats() {
-            for (const [keyName, data] of Object.entries(kb_stats)) {
-                if (!kb_cumulativeStats[keyName]) {
-                    kb_cumulativeStats[keyName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                kb_cumulativeStats[keyName].attempts += data.total;
-                kb_cumulativeStats[keyName].firstTry += data.firstTry;
-                kb_cumulativeStats[keyName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                kb_cumulativeStats[keyName].slow += data.slow || 0;
-            }
-            localStorage.setItem('kbCumulativeStats', JSON.stringify(kb_cumulativeStats));
+            updateGenericCumulativeStats('kbCumulativeStats', kb_stats, kb_cumulativeStats);
         }
 
         function kbGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(kb_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(kb_cumulativeStats);
         }
 
         function kbClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            kb_history = [];
-            kb_cumulativeStats = {};
-            localStorage.removeItem('kbGameHistory');
-            localStorage.removeItem('kbCumulativeStats');
-            kbRenderHistory();
+            if (clearGenericHistory('kbGameHistory', 'kbCumulativeStats', kbRenderHistory)) {
+                kb_history = [];
+                kb_cumulativeStats = {};
+            }
         }
 
         function kbRenderHistory() {
@@ -9566,7 +9654,7 @@
                 console.log(`[JTOU] Ignoring ${noteName} - jtou_isPlaying is false (transition window)`);
                 return;
             }
-            if (!jtou_challenge) {
+            if (!jtou_challenge || !jtou_stepStartTime) {
                 console.log(`[JTOU] Ignoring ${noteName} - no active challenge`);
                 return;
             }
@@ -9671,7 +9759,7 @@
         function jtouUpdateResponseTime(seconds) {
             const el = document.getElementById('jtou_responseTime');
             el.innerText = seconds.toFixed(2) + 's';
-            el.className = 'text-2xl font-mono ' + (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(seconds);
         }
 
         function jtouShowFeedback(text, isGood, time = null) {
@@ -9804,39 +9892,18 @@
         }
 
         function jtouUpdateCumulativeStats() {
-            for (const [keyName, data] of Object.entries(jtou_stats)) {
-                if (!jtou_cumulativeStats[keyName]) {
-                    jtou_cumulativeStats[keyName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                jtou_cumulativeStats[keyName].attempts += data.total;
-                jtou_cumulativeStats[keyName].firstTry += data.firstTry;
-                jtou_cumulativeStats[keyName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                jtou_cumulativeStats[keyName].slow += data.slow || 0;
-            }
-            localStorage.setItem('jtouCumulativeStats', JSON.stringify(jtou_cumulativeStats));
+            updateGenericCumulativeStats('jtouCumulativeStats', jtou_stats, jtou_cumulativeStats);
         }
 
         function jtouGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(jtou_cumulativeStats)) {
-                if (data.attempts >= 5) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, firstTry: data.firstTry, slow: data.slow || 0, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(jtou_cumulativeStats);
         }
 
         function jtouClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            jtou_history = [];
-            jtou_cumulativeStats = {};
-            localStorage.removeItem('jtouGameHistory');
-            localStorage.removeItem('jtouCumulativeStats');
-            jtouRenderHistory();
+            if (clearGenericHistory('jtouGameHistory', 'jtouCumulativeStats', jtouRenderHistory)) {
+                jtou_history = [];
+                jtou_cumulativeStats = {};
+            }
         }
 
         function jtouRenderHistory() {
@@ -9906,9 +9973,31 @@
                 suffix: '7',
                 A: { intervals: [4, 7, 10, 2], formula: '3 - 5 - b7 - 9' },   // maj3, P5, min7, maj9
                 B: { intervals: [10, 2, 4, 7], formula: 'b7 - 9 - 3 - 5' }    // min7, maj9, maj3, P5
+            },
+            '7sharp5': {
+                suffix: '7#5',
+                A: { intervals: [4, 8, 10, 2], formula: '3 - #5 - b7 - 9' },
+                B: { intervals: [10, 2, 4, 8], formula: 'b7 - 9 - 3 - #5' }
+            },
+            '7b9': {
+                suffix: '7b9',
+                A: { intervals: [4, 7, 10, 1], formula: '3 - 5 - b7 - b9' },
+                B: { intervals: [10, 1, 4, 7], formula: 'b7 - b9 - 3 - 5' }
+            },
+            'm7b5': {
+                suffix: 'm7b5',
+                A: { intervals: [3, 6, 10, 2], formula: 'b3 - b5 - b7 - 9' },
+                B: { intervals: [10, 2, 3, 6], formula: 'b7 - 9 - b3 - b5' }
+            },
+            'o7': {
+                suffix: '°7',
+                A: { intervals: [3, 6, 9, 2], formula: 'b3 - b5 - bb7 - 9' },
+                B: { intervals: [9, 2, 3, 6], formula: 'bb7 - 9 - b3 - b5' }
             }
         };
-        const ROOTLESS_CHORD_TYPES = ['maj7', 'min7', 'dom7'];
+        const ROOTLESS_STANDARD_TYPES = ['maj7', 'min7', 'dom7'];
+        const ROOTLESS_ALTERED_TYPES = ['7sharp5', '7b9', 'm7b5', 'o7'];
+        const ROOTLESS_CHORD_TYPES = [...ROOTLESS_STANDARD_TYPES, ...ROOTLESS_ALTERED_TYPES];
         const ROOTLESS_VOICING_TYPES = ['A', 'B'];
 
         let dom7v_isPlaying = false;
@@ -10086,7 +10175,11 @@
                 chosen = availableChallenges[Math.floor(Math.random() * availableChallenges.length)];
             } else {
                 // Normal mode: pick from all combinations
-                const chordTypesToUse = dom7v_config.chordType === 'all' ? ROOTLESS_CHORD_TYPES : [dom7v_config.chordType];
+                let chordTypesToUse;
+                if (dom7v_config.chordType === 'all') chordTypesToUse = ROOTLESS_CHORD_TYPES;
+                else if (dom7v_config.chordType === 'standard') chordTypesToUse = ROOTLESS_STANDARD_TYPES;
+                else if (dom7v_config.chordType === 'altered') chordTypesToUse = ROOTLESS_ALTERED_TYPES;
+                else chordTypesToUse = [dom7v_config.chordType];
                 const voicingTypesToUse = dom7v_config.voicingType === 'both' ? ROOTLESS_VOICING_TYPES : [dom7v_config.voicingType];
 
                 // Build list of available root+chordType+voicingType combinations
@@ -10150,7 +10243,7 @@
         }
 
         function dom7vOnNoteOn(midi) {
-            if (!dom7v_isPlaying || !dom7v_challenge) return;
+            if (!dom7v_isPlaying || !dom7v_challenge || !dom7v_challengeStartTime) return;
 
             highlightKey('dom7v_pianoSvg', midi, 'key-held');
 
@@ -10245,7 +10338,7 @@
         function dom7vUpdateResponseTime(avgTime) {
             const el = document.getElementById('dom7v_responseTime');
             el.innerText = avgTime.toFixed(1) + 's';
-            el.className = 'text-2xl font-mono ' + (avgTime < 2 ? 'timer-fast' : avgTime < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(avgTime);
         }
 
         function dom7vStopGame() {
@@ -10371,39 +10464,18 @@
         }
 
         function dom7vClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            dom7v_history = [];
-            dom7v_cumulativeStats = {};
-            localStorage.removeItem('dom7vGameHistory');
-            localStorage.removeItem('dom7vCumulativeStats');
-            dom7vRenderHistory();
+            if (clearGenericHistory('dom7vGameHistory', 'dom7vCumulativeStats', dom7vRenderHistory)) {
+                dom7v_history = [];
+                dom7v_cumulativeStats = {};
+            }
         }
 
         function dom7vUpdateCumulativeStats() {
-            for (const [chordName, data] of Object.entries(dom7v_stats)) {
-                if (!dom7v_cumulativeStats[chordName]) {
-                    dom7v_cumulativeStats[chordName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                dom7v_cumulativeStats[chordName].attempts += data.total;
-                dom7v_cumulativeStats[chordName].firstTry += data.firstTry;
-                dom7v_cumulativeStats[chordName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                dom7v_cumulativeStats[chordName].slow += data.slow || 0;
-            }
-            localStorage.setItem('dom7vCumulativeStats', JSON.stringify(dom7v_cumulativeStats));
+            updateGenericCumulativeStats('dom7vCumulativeStats', dom7v_stats, dom7v_cumulativeStats);
         }
 
         function dom7vGetProblemAreas() {
-            const areas = [];
-            for (const [name, data] of Object.entries(dom7v_cumulativeStats)) {
-                if (data.attempts >= 3) {
-                    const successRate = (data.firstTry / data.attempts) * 100;
-                    const slowRate = ((data.slow || 0) / data.attempts) * 100;
-                    const avgTime = data.totalTime / data.attempts;
-                    const problemScore = (100 - successRate) + slowRate;
-                    areas.push({ name, successRate, slowRate, avgTime, attempts: data.attempts, problemScore });
-                }
-            }
-            return areas.sort((a, b) => b.problemScore - a.problemScore);
+            return getGenericProblemAreas(dom7v_cumulativeStats, 3);
         }
 
         function dom7vRenderHistory() {
@@ -10657,7 +10729,7 @@
         }
 
         function extvOnNoteOn(midi) {
-            if (!extv_isPlaying || !extv_challenge) return;
+            if (!extv_isPlaying || !extv_challenge || !extv_challengeStartTime) return;
 
             highlightKey('extv_pianoSvg', midi, 'key-held');
 
@@ -10741,7 +10813,7 @@
         function extvUpdateResponseTime(avgTime) {
             const el = document.getElementById('extv_responseTime');
             el.innerText = avgTime.toFixed(1) + 's';
-            el.className = 'text-2xl font-mono ' + (avgTime < 2 ? 'timer-fast' : avgTime < 4 ? 'timer-medium' : 'timer-slow');
+            el.className = 'text-2xl font-mono ' + timerClass(avgTime);
         }
 
         function extvStopGame() {
@@ -10855,25 +10927,14 @@
         }
 
         function extvClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            extv_history = [];
-            extv_cumulativeStats = {};
-            localStorage.removeItem('extvGameHistory');
-            localStorage.removeItem('extvCumulativeStats');
-            extvRenderHistory();
+            if (clearGenericHistory('extvGameHistory', 'extvCumulativeStats', extvRenderHistory)) {
+                extv_history = [];
+                extv_cumulativeStats = {};
+            }
         }
 
         function extvUpdateCumulativeStats() {
-            for (const [chordName, data] of Object.entries(extv_stats)) {
-                if (!extv_cumulativeStats[chordName]) {
-                    extv_cumulativeStats[chordName] = { attempts: 0, firstTry: 0, totalTime: 0, slow: 0 };
-                }
-                extv_cumulativeStats[chordName].attempts += data.total;
-                extv_cumulativeStats[chordName].firstTry += data.firstTry;
-                extv_cumulativeStats[chordName].totalTime += data.times.reduce((a, b) => a + b, 0);
-                extv_cumulativeStats[chordName].slow += data.slow || 0;
-            }
-            localStorage.setItem('extvCumulativeStats', JSON.stringify(extv_cumulativeStats));
+            updateGenericCumulativeStats('extvCumulativeStats', extv_stats, extv_cumulativeStats);
         }
 
         function extvGetProblemAreas() {
@@ -11217,7 +11278,7 @@
                     const avgTime = pent_allTimes.reduce((a, b) => a + b, 0) / pent_allTimes.length;
                     const timeEl = document.getElementById('pent_responseTime');
                     timeEl.innerText = avgTime.toFixed(1) + 's';
-                    timeEl.className = `text-2xl font-mono ${avgTime < 2 ? 'timer-fast' : avgTime < 4 ? 'timer-medium' : 'timer-slow'}`;
+                    timeEl.className = `text-2xl font-mono ${timerClass(avgTime)}`;
 
                     // Show feedback
                     pentShowFeedback(true);
@@ -11383,28 +11444,14 @@
         }
 
         function pentGetProblemAreas() {
-            const dominated = [];
-            Object.entries(pent_cumulativeStats).forEach(([key, data]) => {
-                if (data.attempts >= 2) {
-                    const mistakeRate = data.mistakes / data.attempts;
-                    const avgTime = data.times.length > 0
-                        ? data.times.reduce((a, b) => a + b, 0) / data.times.length
-                        : 0;
-                    if (mistakeRate > 0.3 || avgTime > 3) {
-                        dominated.push({ key, mistakeRate, avgTime, attempts: data.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(pent_cumulativeStats, 2, { avgTimeThreshold: 3 });
         }
 
         function pentClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            pent_history = [];
-            pent_cumulativeStats = {};
-            localStorage.removeItem('pentHistory');
-            localStorage.removeItem('pentCumulativeStats');
-            pentRenderHistory();
+            if (clearGenericHistory('pentHistory', 'pentCumulativeStats', pentRenderHistory)) {
+                pent_history = [];
+                pent_cumulativeStats = {};
+            }
         }
 
         function pentRenderHistory() {
@@ -11852,38 +11899,18 @@
         }
 
         function bebopUpdateCumulativeStats() {
-            Object.keys(bebop_stats).forEach(key => {
-                const stat = bebop_stats[key];
-                if (!bebop_cumulativeStats[key]) {
-                    bebop_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
-                }
-                bebop_cumulativeStats[key].attempts += stat.attempts;
-                bebop_cumulativeStats[key].mistakes += stat.mistakes;
-            });
-            localStorage.setItem('bebop_cumulativeStats', JSON.stringify(bebop_cumulativeStats));
+            updateMistakeCumulativeStats('bebop_cumulativeStats', bebop_stats, bebop_cumulativeStats);
         }
 
         function bebopGetProblemAreas() {
-            const dominated = [];
-            Object.keys(bebop_cumulativeStats).forEach(key => {
-                const stat = bebop_cumulativeStats[key];
-                if (stat.attempts >= 3) {
-                    const mistakeRate = stat.mistakes / stat.attempts;
-                    if (mistakeRate > 0.3) {
-                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(bebop_cumulativeStats);
         }
 
         function bebopClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            bebop_history = [];
-            bebop_cumulativeStats = {};
-            localStorage.removeItem('bebop_history');
-            localStorage.removeItem('bebop_cumulativeStats');
-            bebopRenderHistory();
+            if (clearGenericHistory('bebop_history', 'bebop_cumulativeStats', bebopRenderHistory)) {
+                bebop_history = [];
+                bebop_cumulativeStats = {};
+            }
         }
 
         function bebopRenderHistory() {
@@ -12279,38 +12306,18 @@
         }
 
         function tritoneUpdateCumulativeStats() {
-            Object.keys(tritone_stats).forEach(key => {
-                const stat = tritone_stats[key];
-                if (!tritone_cumulativeStats[key]) {
-                    tritone_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
-                }
-                tritone_cumulativeStats[key].attempts += stat.attempts;
-                tritone_cumulativeStats[key].mistakes += stat.mistakes;
-            });
-            localStorage.setItem('tritone_cumulativeStats', JSON.stringify(tritone_cumulativeStats));
+            updateMistakeCumulativeStats('tritone_cumulativeStats', tritone_stats, tritone_cumulativeStats);
         }
 
         function tritoneGetProblemAreas() {
-            const dominated = [];
-            Object.keys(tritone_cumulativeStats).forEach(key => {
-                const stat = tritone_cumulativeStats[key];
-                if (stat.attempts >= 3) {
-                    const mistakeRate = stat.mistakes / stat.attempts;
-                    if (mistakeRate > 0.3) {
-                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(tritone_cumulativeStats);
         }
 
         function tritoneClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            tritone_history = [];
-            tritone_cumulativeStats = {};
-            localStorage.removeItem('tritone_history');
-            localStorage.removeItem('tritone_cumulativeStats');
-            tritoneRenderHistory();
+            if (clearGenericHistory('tritone_history', 'tritone_cumulativeStats', tritoneRenderHistory)) {
+                tritone_history = [];
+                tritone_cumulativeStats = {};
+            }
         }
 
         function tritoneRenderHistory() {
@@ -12617,7 +12624,7 @@
                 document.getElementById('shell_firstTry').innerText = pct + '%';
 
                 // Update response time
-                const timeClass = elapsed < 2000 ? 'timer-fast' : (elapsed < 4000 ? 'timer-medium' : 'timer-slow');
+                const timeClass = timerClass(elapsed, 2000, 4000);
                 document.getElementById('shell_responseTime').innerText = (elapsed / 1000).toFixed(1) + 's';
                 document.getElementById('shell_responseTime').className = 'text-2xl font-mono ' + timeClass;
 
@@ -12759,38 +12766,18 @@
         }
 
         function shellUpdateCumulativeStats() {
-            Object.keys(shell_stats).forEach(key => {
-                const stat = shell_stats[key];
-                if (!shell_cumulativeStats[key]) {
-                    shell_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
-                }
-                shell_cumulativeStats[key].attempts += stat.attempts;
-                shell_cumulativeStats[key].mistakes += stat.mistakes;
-            });
-            localStorage.setItem('shell_cumulativeStats', JSON.stringify(shell_cumulativeStats));
+            updateMistakeCumulativeStats('shell_cumulativeStats', shell_stats, shell_cumulativeStats);
         }
 
         function shellGetProblemAreas() {
-            const dominated = [];
-            Object.keys(shell_cumulativeStats).forEach(key => {
-                const stat = shell_cumulativeStats[key];
-                if (stat.attempts >= 3) {
-                    const mistakeRate = stat.mistakes / stat.attempts;
-                    if (mistakeRate > 0.3) {
-                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(shell_cumulativeStats);
         }
 
         function shellClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            shell_history = [];
-            shell_cumulativeStats = {};
-            localStorage.removeItem('shell_history');
-            localStorage.removeItem('shell_cumulativeStats');
-            shellRenderHistory();
+            if (clearGenericHistory('shell_history', 'shell_cumulativeStats', shellRenderHistory)) {
+                shell_history = [];
+                shell_cumulativeStats = {};
+            }
         }
 
         function shellRenderHistory() {
@@ -13150,7 +13137,7 @@
                 document.getElementById('upper_firstTry').innerText = pct + '%';
 
                 // Update response time
-                const timeClass = elapsed < 2000 ? 'timer-fast' : (elapsed < 4000 ? 'timer-medium' : 'timer-slow');
+                const timeClass = timerClass(elapsed, 2000, 4000);
                 document.getElementById('upper_responseTime').innerText = (elapsed / 1000).toFixed(1) + 's';
                 document.getElementById('upper_responseTime').className = 'text-2xl font-mono ' + timeClass;
 
@@ -13276,38 +13263,18 @@
         }
 
         function upperUpdateCumulativeStats() {
-            Object.keys(upper_stats).forEach(key => {
-                const stat = upper_stats[key];
-                if (!upper_cumulativeStats[key]) {
-                    upper_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
-                }
-                upper_cumulativeStats[key].attempts += stat.attempts;
-                upper_cumulativeStats[key].mistakes += stat.mistakes;
-            });
-            localStorage.setItem('upper_cumulativeStats', JSON.stringify(upper_cumulativeStats));
+            updateMistakeCumulativeStats('upper_cumulativeStats', upper_stats, upper_cumulativeStats);
         }
 
         function upperGetProblemAreas() {
-            const dominated = [];
-            Object.keys(upper_cumulativeStats).forEach(key => {
-                const stat = upper_cumulativeStats[key];
-                if (stat.attempts >= 3) {
-                    const mistakeRate = stat.mistakes / stat.attempts;
-                    if (mistakeRate > 0.3) {
-                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(upper_cumulativeStats);
         }
 
         function upperClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            upper_history = [];
-            upper_cumulativeStats = {};
-            localStorage.removeItem('upper_history');
-            localStorage.removeItem('upper_cumulativeStats');
-            upperRenderHistory();
+            if (clearGenericHistory('upper_history', 'upper_cumulativeStats', upperRenderHistory)) {
+                upper_history = [];
+                upper_cumulativeStats = {};
+            }
         }
 
         function upperRenderHistory() {
@@ -13476,6 +13443,12 @@
                 attya: {
                     voicing: document.getElementById('attya_voicingSelect').value,
                     showHints: document.getElementById('attya_showHints').checked
+                },
+                chordMod: {
+                    modType: document.getElementById('cmod_modTypeSelect').value,
+                    voicing: document.getElementById('cmod_voicingSelect').value,
+                    rounds: document.getElementById('cmod_roundsSelect').value,
+                    showHints: document.getElementById('cmod_showHints').checked
                 }
             };
             localStorage.setItem('pianoTutorSettings', JSON.stringify(settings));
@@ -13644,6 +13617,14 @@
                 if (settings.attya) {
                     if (settings.attya.voicing) document.getElementById('attya_voicingSelect').value = settings.attya.voicing;
                     if (settings.attya.showHints !== undefined) document.getElementById('attya_showHints').checked = settings.attya.showHints;
+                }
+
+                // Chord Modification
+                if (settings.chordMod) {
+                    if (settings.chordMod.modType) document.getElementById('cmod_modTypeSelect').value = settings.chordMod.modType;
+                    if (settings.chordMod.voicing) document.getElementById('cmod_voicingSelect').value = settings.chordMod.voicing;
+                    if (settings.chordMod.rounds) document.getElementById('cmod_roundsSelect').value = settings.chordMod.rounds;
+                    if (settings.chordMod.showHints !== undefined) document.getElementById('cmod_showHints').checked = settings.chordMod.showHints;
                 }
             } catch (e) {
                 console.error('Failed to load settings:', e);
@@ -13947,7 +13928,7 @@
                 const seconds = freestyle_confirmedTime / 1000;
                 document.getElementById('freestyle_responseTime').innerText = seconds.toFixed(1) + 's';
                 document.getElementById('freestyle_responseTime').className = 'text-2xl font-mono ' +
-                    (seconds < 2 ? 'timer-fast' : seconds < 4 ? 'timer-medium' : 'timer-slow');
+                    timerClass(seconds);
 
                 // Show initial valid feedback
                 document.getElementById('freestyle_feedbackText').innerText = '✓ Valid!';
@@ -14095,38 +14076,18 @@
         }
 
         function freestyleClearHistory() {
-            if (!confirm('Clear all history and statistics for this mode?')) return;
-            freestyle_history = [];
-            freestyle_cumulativeStats = {};
-            localStorage.removeItem('freestyle_history');
-            localStorage.removeItem('freestyle_cumulativeStats');
-            freestyleRenderHistory();
+            if (clearGenericHistory('freestyle_history', 'freestyle_cumulativeStats', freestyleRenderHistory)) {
+                freestyle_history = [];
+                freestyle_cumulativeStats = {};
+            }
         }
 
         function freestyleUpdateCumulativeStats() {
-            Object.keys(freestyle_stats).forEach(key => {
-                const stat = freestyle_stats[key];
-                if (!freestyle_cumulativeStats[key]) {
-                    freestyle_cumulativeStats[key] = { attempts: 0, mistakes: 0 };
-                }
-                freestyle_cumulativeStats[key].attempts += stat.attempts;
-                freestyle_cumulativeStats[key].mistakes += stat.mistakes;
-            });
-            localStorage.setItem('freestyle_cumulativeStats', JSON.stringify(freestyle_cumulativeStats));
+            updateMistakeCumulativeStats('freestyle_cumulativeStats', freestyle_stats, freestyle_cumulativeStats);
         }
 
         function freestyleGetProblemAreas() {
-            const dominated = [];
-            Object.keys(freestyle_cumulativeStats).forEach(key => {
-                const stat = freestyle_cumulativeStats[key];
-                if (stat.attempts >= 3) {
-                    const mistakeRate = stat.mistakes / stat.attempts;
-                    if (mistakeRate > 0.3) {
-                        dominated.push({ key, mistakeRate, attempts: stat.attempts });
-                    }
-                }
-            });
-            return dominated.sort((a, b) => b.mistakeRate - a.mistakeRate).slice(0, 5);
+            return getGenericMistakeAreas(freestyle_cumulativeStats);
         }
 
         function freestyleRenderHistory() {
@@ -14405,7 +14366,7 @@
                 const avgTime = attya_responseTimes.reduce((a, b) => a + b, 0) / attya_responseTimes.length;
                 const avgTimeStr = (avgTime / 1000).toFixed(1) + 's';
                 document.getElementById('attya_responseTime').textContent = avgTimeStr;
-                document.getElementById('attya_responseTime').className = `text-2xl font-mono ${avgTime < 2000 ? 'timer-fast' : avgTime < 4000 ? 'timer-medium' : 'timer-slow'}`;
+                document.getElementById('attya_responseTime').className = `text-2xl font-mono ${timerClass(avgTime, 2000, 4000)}`;
 
                 // Show success feedback
                 document.getElementById('attya_feedbackText').innerHTML = '<span class="text-green-400">Correct!</span>';
@@ -15035,32 +14996,416 @@
             }
         }
 
+        // ============ CHORD MODIFICATION MODE ============
+        const CHORD_MODIFICATIONS = [
+            {
+                base: 'dom7', target: '7sharp5',
+                label: '7 → 7#5', description: '5th → #5 (up ½ step)',
+                changedInterval: { from: 7, to: 8 }
+            },
+            {
+                base: 'dom7', target: '7b9',
+                label: '7 → 7b9', description: '9th → b9 (down ½ step)',
+                changedInterval: { from: 2, to: 1 }
+            },
+            {
+                base: 'min7', target: 'm7b5',
+                label: 'm7 → m7b5', description: '5th → b5 (down ½ step)',
+                changedInterval: { from: 7, to: 6 }
+            }
+        ];
+
+        let cmod_isPlaying = false;
+        let cmod_challenge = null;
+        let cmod_challengeStartTime = null;
+        let cmod_round = 0;
+        let cmod_totalRounds = 12;
+        let cmod_mistakes = 0;
+        let cmod_firstTryCount = 0;
+        let cmod_firstTryThisRound = true;
+        let cmod_responseTimes = [];
+        let cmod_heldNotes = new Set();
+        let cmod_waitingForRelease = false;
+        let cmod_phase = 'base'; // 'base' or 'modify'
+
+        function cmodStartGame() {
+            saveAllSettings();
+
+            cmod_isPlaying = true;
+            cmod_round = 0;
+            cmod_mistakes = 0;
+            cmod_firstTryCount = 0;
+            cmod_responseTimes = [];
+            cmod_heldNotes.clear();
+            cmod_waitingForRelease = false;
+
+            cmod_totalRounds = parseInt(document.getElementById('cmod_roundsSelect').value);
+            document.getElementById('cmod_totalRounds').textContent = cmod_totalRounds;
+
+            // Update button
+            const startBtn = document.getElementById('cmod_startBtn');
+            startBtn.textContent = 'Stop';
+            startBtn.onclick = cmodStopGame;
+            startBtn.classList.remove('bg-blue-600', 'hover:bg-blue-500');
+            startBtn.classList.add('bg-slate-600', 'hover:bg-slate-500');
+
+            // Hide settings, show challenge
+            document.getElementById('cmod_settingsPanel').classList.add('hidden');
+            document.getElementById('cmod_completeDisplay').classList.add('hidden');
+            document.getElementById('cmod_challengeDisplay').classList.remove('hidden');
+
+            // Reset stats display
+            document.getElementById('cmod_roundDisplay').textContent = '0';
+            document.getElementById('cmod_firstTry').textContent = '0%';
+            document.getElementById('cmod_mistakes').textContent = '0';
+
+            cmodRunCountdown(3);
+        }
+
+        function cmodRunCountdown(count) {
+            if (!cmod_isPlaying) return;
+            const baseChord = document.getElementById('cmod_baseChord');
+            const targetChord = document.getElementById('cmod_targetChord');
+            baseChord.textContent = '';
+            targetChord.textContent = '';
+            document.getElementById('cmod_baseNotes').textContent = '';
+            document.getElementById('cmod_targetHint').textContent = '';
+            document.getElementById('cmod_feedbackText').textContent = '';
+            document.getElementById('cmod_modHintPanel').classList.add('hidden');
+
+            if (count > 0) {
+                baseChord.textContent = count;
+                setTimeout(() => cmodRunCountdown(count - 1), 800);
+            } else {
+                cmodNextChallenge();
+            }
+        }
+
+        function cmodStopGame() {
+            cmod_isPlaying = false;
+            cmod_challenge = null;
+            cmod_heldNotes.clear();
+
+            const startBtn = document.getElementById('cmod_startBtn');
+            startBtn.textContent = 'Start Game';
+            startBtn.onclick = cmodStartGame;
+            startBtn.classList.remove('bg-slate-600', 'hover:bg-slate-500');
+            startBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+
+            document.getElementById('cmod_settingsPanel').classList.remove('hidden');
+            document.getElementById('cmod_challengeDisplay').classList.add('hidden');
+
+            clearAllHighlights('cmod_pianoSvg');
+        }
+
+        function cmodNextChallenge() {
+            if (!cmod_isPlaying) return;
+
+            cmod_round++;
+            cmod_firstTryThisRound = true;
+            cmod_phase = 'base';
+            document.getElementById('cmod_roundDisplay').textContent = cmod_round;
+
+            if (cmod_round > cmod_totalRounds) {
+                cmodEndGame();
+                return;
+            }
+
+            // Pick modification type
+            const modTypeVal = document.getElementById('cmod_modTypeSelect').value;
+            let mod;
+            if (modTypeVal === 'all') {
+                mod = CHORD_MODIFICATIONS[Math.floor(Math.random() * CHORD_MODIFICATIONS.length)];
+            } else {
+                mod = CHORD_MODIFICATIONS[parseInt(modTypeVal)];
+            }
+
+            // Pick voicing type
+            const voicingSel = document.getElementById('cmod_voicingSelect').value;
+            const voicingType = voicingSel === 'both' ?
+                (Math.random() < 0.5 ? 'A' : 'B') : voicingSel;
+
+            // Pick random root
+            const root = Math.floor(Math.random() * 12);
+
+            // Build base and target voicings
+            const baseVoicing = ROOTLESS_VOICINGS[mod.base][voicingType];
+            const targetVoicing = ROOTLESS_VOICINGS[mod.target][voicingType];
+
+            const basePitchClasses = new Set(baseVoicing.intervals.map(i => (root + i) % 12));
+            const targetPitchClasses = new Set(targetVoicing.intervals.map(i => (root + i) % 12));
+
+            const baseNoteNames = baseVoicing.intervals.map(i => NOTE_NAMES[(root + i) % 12]);
+            const targetNoteNames = targetVoicing.intervals.map(i => NOTE_NAMES[(root + i) % 12]);
+
+            // Identify the changed note
+            const fromNote = NOTE_NAMES[(root + mod.changedInterval.from) % 12];
+            const toNote = NOTE_NAMES[(root + mod.changedInterval.to) % 12];
+
+            cmod_challenge = {
+                mod: mod,
+                root: root,
+                voicingType: voicingType,
+                baseName: NOTE_NAMES[root] + ROOTLESS_VOICINGS[mod.base].suffix,
+                targetName: NOTE_NAMES[root] + ROOTLESS_VOICINGS[mod.target].suffix,
+                basePitchClasses: basePitchClasses,
+                targetPitchClasses: targetPitchClasses,
+                baseNoteNames: baseNoteNames,
+                targetNoteNames: targetNoteNames,
+                fromNote: fromNote,
+                toNote: toNote
+            };
+
+            cmod_challengeStartTime = null; // Set when phase 2 begins
+            cmodUpdatePhaseDisplay();
+        }
+
+        function cmodUpdatePhaseDisplay() {
+            const baseBox = document.getElementById('cmod_baseBox');
+            const targetBox = document.getElementById('cmod_targetBox');
+            const showHints = document.getElementById('cmod_showHints').checked;
+
+            document.getElementById('cmod_baseChord').textContent = cmod_challenge.baseName;
+            document.getElementById('cmod_targetChord').textContent = cmod_challenge.targetName;
+
+            if (cmod_phase === 'base') {
+                baseBox.classList.add('border-2', 'border-blue-500');
+                baseBox.classList.remove('opacity-50');
+                targetBox.classList.remove('border-2', 'border-amber-500');
+                targetBox.classList.add('opacity-50');
+
+                if (showHints) {
+                    document.getElementById('cmod_baseNotes').textContent = 'Play: ' + cmod_challenge.baseNoteNames.join(' ');
+                } else {
+                    document.getElementById('cmod_baseNotes').textContent = 'Play the chord';
+                }
+                document.getElementById('cmod_targetHint').textContent = '';
+                document.getElementById('cmod_modHintPanel').classList.add('hidden');
+            } else {
+                baseBox.classList.remove('border-2', 'border-blue-500');
+                baseBox.classList.add('opacity-50');
+                targetBox.classList.add('border-2', 'border-amber-500');
+                targetBox.classList.remove('opacity-50');
+
+                document.getElementById('cmod_baseNotes').textContent = '\u2713 ' + cmod_challenge.baseNoteNames.join(' ');
+                document.getElementById('cmod_baseNotes').className = 'text-lg text-green-400';
+
+                if (showHints) {
+                    document.getElementById('cmod_targetHint').textContent = cmod_challenge.fromNote + ' \u2192 ' + cmod_challenge.toNote;
+                    document.getElementById('cmod_modHintPanel').classList.remove('hidden');
+                    document.getElementById('cmod_modDescription').textContent = cmod_challenge.mod.description;
+                } else {
+                    document.getElementById('cmod_targetHint').textContent = 'Modify one note';
+                    document.getElementById('cmod_modHintPanel').classList.add('hidden');
+                }
+            }
+
+            document.getElementById('cmod_feedbackText').textContent = '';
+        }
+
+        function cmodOnNoteOn(midi) {
+            if (!cmod_isPlaying || !cmod_challenge) return;
+            if (cmod_waitingForRelease) return;
+
+            cmod_heldNotes.add(midi);
+            highlightKey('cmod_pianoSvg', midi, 'key-active', true);
+
+            const heldPitchClasses = new Set([...cmod_heldNotes].map(n => n % 12));
+
+            if (cmod_phase === 'base') {
+                // Validate base chord
+                const requiredPCs = cmod_challenge.basePitchClasses;
+                const hasAllRequired = [...requiredPCs].every(pc => heldPitchClasses.has(pc));
+
+                // Check for wrong notes
+                const hasWrongNote = [...heldPitchClasses].some(pc => !requiredPCs.has(pc));
+
+                if (hasWrongNote) {
+                    cmod_mistakes++;
+                    cmod_firstTryThisRound = false;
+                    document.getElementById('cmod_mistakes').textContent = cmod_mistakes;
+                    document.getElementById('cmod_feedbackText').textContent = '\u2717 Wrong note';
+                    document.getElementById('cmod_feedbackText').className = 'text-lg font-semibold text-center h-7 mb-4 text-red-400';
+                } else if (hasAllRequired && heldPitchClasses.size >= requiredPCs.size) {
+                    document.getElementById('cmod_feedbackText').textContent = '\u2713 Good! Now modify...';
+                    document.getElementById('cmod_feedbackText').className = 'text-lg font-semibold text-center h-7 mb-4 text-green-400';
+                    cmod_waitingForRelease = 'toModify';
+                }
+            } else {
+                // Modify phase - must have challengeStartTime
+                if (!cmod_challengeStartTime) return;
+
+                const requiredPCs = cmod_challenge.targetPitchClasses;
+                const hasAllRequired = [...requiredPCs].every(pc => heldPitchClasses.has(pc));
+
+                // Check for wrong notes
+                const hasWrongNote = [...heldPitchClasses].some(pc => !requiredPCs.has(pc));
+
+                if (hasWrongNote) {
+                    cmod_mistakes++;
+                    cmod_firstTryThisRound = false;
+                    document.getElementById('cmod_mistakes').textContent = cmod_mistakes;
+                    document.getElementById('cmod_feedbackText').textContent = '\u2717 Wrong note';
+                    document.getElementById('cmod_feedbackText').className = 'text-lg font-semibold text-center h-7 mb-4 text-red-400';
+                } else if (hasAllRequired && heldPitchClasses.size >= requiredPCs.size) {
+                    const responseTime = Date.now() - cmod_challengeStartTime;
+                    cmod_responseTimes.push(responseTime);
+
+                    if (cmod_firstTryThisRound) {
+                        cmod_firstTryCount++;
+                    }
+
+                    const firstTryPct = Math.round((cmod_firstTryCount / cmod_round) * 100);
+                    document.getElementById('cmod_firstTry').textContent = `${firstTryPct}%`;
+
+                    const timeSec = responseTime / 1000;
+                    document.getElementById('cmod_feedbackText').textContent = `\u2713 ${timeSec.toFixed(1)}s`;
+                    document.getElementById('cmod_feedbackText').className = 'text-lg font-semibold text-center h-7 mb-4 text-green-400';
+
+                    // Update avg time display
+                    if (cmod_responseTimes.length > 0) {
+                        const avg = cmod_responseTimes.reduce((a, b) => a + b, 0) / cmod_responseTimes.length / 1000;
+                        const el = document.getElementById('cmod_responseTime');
+                        el.textContent = avg.toFixed(1) + 's';
+                        el.className = 'text-2xl font-mono ' + timerClass(avg);
+                    }
+
+                    cmod_waitingForRelease = 'toNext';
+                }
+            }
+        }
+
+        function cmodOnNoteOff(midi) {
+            cmod_heldNotes.delete(midi);
+            highlightKey('cmod_pianoSvg', midi, 'key-active', false);
+
+            if (cmod_waitingForRelease && cmod_heldNotes.size === 0) {
+                const action = cmod_waitingForRelease;
+                cmod_waitingForRelease = false;
+
+                if (action === 'toModify') {
+                    cmod_phase = 'modify';
+                    cmod_challengeStartTime = Date.now();
+                    // Reset base notes className before showing modify phase
+                    document.getElementById('cmod_baseNotes').className = 'text-lg text-blue-400';
+                    cmodUpdatePhaseDisplay();
+                } else if (action === 'toNext') {
+                    clearAllHighlights('cmod_pianoSvg');
+                    // Reset classes for next round
+                    document.getElementById('cmod_baseNotes').className = 'text-lg text-blue-400';
+                    setTimeout(() => cmodNextChallenge(), 300);
+                }
+            }
+        }
+
+        function cmodEndGame() {
+            cmod_isPlaying = false;
+
+            const avgTime = cmod_responseTimes.length > 0 ?
+                cmod_responseTimes.reduce((a, b) => a + b, 0) / cmod_responseTimes.length : 0;
+            const firstTryPct = Math.round((cmod_firstTryCount / cmod_totalRounds) * 100);
+
+            document.getElementById('cmod_finalRounds').textContent = cmod_totalRounds;
+            document.getElementById('cmod_finalAvgTime').textContent = (avgTime / 1000).toFixed(1) + 's';
+            document.getElementById('cmod_finalFirstTry').textContent = `${firstTryPct}%`;
+            document.getElementById('cmod_finalMistakes').textContent = cmod_mistakes;
+
+            document.getElementById('cmod_challengeDisplay').classList.add('hidden');
+            document.getElementById('cmod_completeDisplay').classList.remove('hidden');
+            document.getElementById('cmod_settingsPanel').classList.remove('hidden');
+
+            const startBtn = document.getElementById('cmod_startBtn');
+            startBtn.textContent = 'Play Again';
+            startBtn.onclick = cmodStartGame;
+            startBtn.classList.remove('bg-slate-600', 'hover:bg-slate-500');
+            startBtn.classList.add('bg-blue-600', 'hover:bg-blue-500');
+
+            // Save history
+            const historyEntry = {
+                date: new Date().toISOString(),
+                rounds: cmod_totalRounds,
+                avgTime: avgTime,
+                firstTryPct: firstTryPct,
+                mistakes: cmod_mistakes,
+                config: {
+                    modType: document.getElementById('cmod_modTypeSelect').value,
+                    voicing: document.getElementById('cmod_voicingSelect').value
+                }
+            };
+
+            let history = JSON.parse(localStorage.getItem('cmod_history') || '[]');
+            history.unshift(historyEntry);
+            history = history.slice(0, 20);
+            localStorage.setItem('cmod_history', JSON.stringify(history));
+
+            cmodRenderHistory();
+        }
+
+        function cmodLoadHistory() {
+            cmodRenderHistory();
+        }
+
+        function cmodRenderHistory() {
+            const content = document.getElementById('cmod_historyContent');
+            let history = JSON.parse(localStorage.getItem('cmod_history') || '[]');
+
+            if (history.length === 0) {
+                content.innerHTML = '<p class="text-slate-500 text-sm">No practice history yet. Complete a run to see your results here.</p>';
+                return;
+            }
+
+            const medals = getMedals(history, 'firstTryPct', 'avgTime');
+
+            let html = '<div class="flex justify-between items-center mb-3"><h2 class="text-xl font-semibold text-white">Practice History</h2>';
+            html += '<button onclick="cmodClearHistory()" class="text-xs text-slate-500 hover:text-red-400 transition">Clear History</button></div>';
+            html += '<div class="space-y-1">';
+
+            history.forEach((game, idx) => {
+                const date = new Date(game.date);
+                const timeStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const avgTimeStr = (game.avgTime / 1000).toFixed(1) + 's';
+                const medal = medals[idx] || '';
+                const rowClass = idx % 2 === 0 ? 'bg-slate-700/30' : '';
+
+                html += `<div class="flex justify-between items-center text-sm p-2 ${rowClass} rounded">
+                    <div><span class="text-slate-400">${timeStr}</span><span class="text-xs text-purple-400 ml-2">${game.config?.modType || 'all'} ${game.config?.voicing || ''}</span></div>
+                    <div><span class="font-bold ${game.firstTryPct >= 80 ? 'text-green-400' : game.firstTryPct >= 60 ? 'text-yellow-400' : 'text-red-400'}">${game.firstTryPct}%</span>
+                    <span class="text-slate-500 text-xs ml-1">(${avgTimeStr})</span>
+                    <span class="text-red-400 text-xs ml-1">${game.mistakes}m</span>
+                    ${medal ? `<span class="ml-1">${medal}</span>` : ''}</div>
+                </div>`;
+            });
+
+            html += '</div>';
+            content.innerHTML = html;
+        }
+
+        function cmodClearHistory() {
+            if (confirm('Clear all chord modification practice history?')) {
+                localStorage.removeItem('cmod_history');
+                cmodRenderHistory();
+            }
+        }
+
         // ============ INIT ============
-        drawPiano('previewPianoSvg');
-        drawPiano('pianoSvg');
-        drawPiano('ch_pianoSvg');
-        drawPiano('iivi_pianoSvg');
-        drawPiano('sc_pianoSvg');
-        drawPiano('ext_pianoSvg');
-        drawPiano('alt_pianoSvg');
-        drawPiano('adv_pianoSvg');
-        drawPiano('miivi_pianoSvg');
-        drawPiano('kb_pianoSvg');
-        drawPiano('jtou_pianoSvg');
-        drawPiano('dom7v_pianoSvg');
-        drawPiano('extv_pianoSvg');
-        drawPiano('pent_pianoSvg');
-        drawPiano('bebop_pianoSvg');
-        drawPiano('tritone_pianoSvg');
-        drawPiano('shell_pianoSvg');
-        drawPiano('upper_pianoSvg');
-        drawPiano('freestyle_pianoSvg');
-        drawPiano('attya_pianoSvg');
-        drawPiano('vl_pianoSvg');
+        function initAllPianos() {
+            drawPiano('previewPianoSvg');
+            MODE_REGISTRY.forEach(m => drawPiano(m.pianoSvg));
+        }
+
+        initAllPianos();
         attyaRenderChartGrid();
         initMIDI();
-        intLoadHistory();
-        chLoadHistory();
+
+        // Load history and breakdown for all modes
+        MODE_REGISTRY.forEach(m => {
+            m.loadHistory();
+            if (m.showBreakdown) m.showBreakdown();
+        });
+
+        loadAllSettings();
+
+        // Mode-specific event listeners
         document.getElementById('ch_handsSelect').addEventListener('change', function() {
             const hint = document.getElementById('ch_settingsHint');
             if (this.value === 'two') {
@@ -15069,51 +15414,6 @@
                 hint.innerText = 'Play all 4 notes of the chord (any octave, any voicing). Root + 3rd + 5th + 7th.';
             }
         });
-        iiviLoadHistory();
-        scLoadHistory();
-        extLoadHistory();
-        altLoadHistory();
-        advLoadHistory();
-        miiviLoadHistory();
-        kbLoadHistory();
-        jtouLoadHistory();
-        dom7vLoadHistory();
-        extvLoadHistory();
-        pentLoadHistory();
-        bebopLoadHistory();
-        tritoneLoadHistory();
-        shellLoadHistory();
-        upperLoadHistory();
-        freestyleLoadHistory();
-        attyaLoadHistory();
-        vlLoadHistory();
-        loadAllSettings();
-        // Show breakdown sections with cumulative stats on page load
-        intShowBreakdown();
-        chShowBreakdown();
-        iiviShowBreakdown();
-        scShowBreakdown();
-        extShowBreakdown();
-        altShowBreakdown();
-        advShowBreakdown();
-        miiviShowBreakdown();
-        kbShowBreakdown();
-        jtouShowBreakdown();
-        dom7vShowBreakdown();
-        extvShowBreakdown();
-        pentShowBreakdown();
-        bebopShowBreakdown();
-        tritoneShowBreakdown();
-        shellShowBreakdown();
-        upperShowBreakdown();
-        freestyleShowBreakdown();
-        // Load chord identifier preference
-        const savedChordIdPref = localStorage.getItem('chordIdentifierEnabled');
-        if (savedChordIdPref === 'false') {
-            chordIdentifierEnabled = false;
-            document.getElementById('chordIdentifier').classList.add('hidden');
-            document.getElementById('chordIdentifierShowBtn').classList.remove('hidden');
-        }
         document.getElementById('jtou_voicingSelect').addEventListener('change', function() {
             const hint = document.getElementById('jtou_settingsHint');
             if (this.value === 'no5') {
@@ -15122,7 +15422,16 @@
                 hint.innerText = 'The classic Grover Washington Jr. / Bill Withers progression. In Fm: Dbmaj9 → C7#9 → Fm9';
             }
         });
-        window.addEventListener('resize', () => { drawPiano('previewPianoSvg'); drawPiano('pianoSvg'); drawPiano('ch_pianoSvg'); drawPiano('iivi_pianoSvg'); drawPiano('sc_pianoSvg'); drawPiano('ext_pianoSvg'); drawPiano('alt_pianoSvg'); drawPiano('adv_pianoSvg'); drawPiano('miivi_pianoSvg'); drawPiano('kb_pianoSvg'); drawPiano('jtou_pianoSvg'); drawPiano('dom7v_pianoSvg'); drawPiano('extv_pianoSvg'); drawPiano('pent_pianoSvg'); drawPiano('bebop_pianoSvg'); drawPiano('tritone_pianoSvg'); drawPiano('shell_pianoSvg'); drawPiano('upper_pianoSvg'); drawPiano('freestyle_pianoSvg'); drawPiano('attya_pianoSvg'); drawPiano('vl_pianoSvg'); });
+
+        // Load chord identifier preference
+        const savedChordIdPref = localStorage.getItem('chordIdentifierEnabled');
+        if (savedChordIdPref === 'false') {
+            chordIdentifierEnabled = false;
+            document.getElementById('chordIdentifier').classList.add('hidden');
+            document.getElementById('chordIdentifierShowBtn').classList.remove('hidden');
+        }
+
+        window.addEventListener('resize', initAllPianos);
     </script>
 </body>
 </html>
