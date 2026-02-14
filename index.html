@@ -3330,7 +3330,7 @@
                     <div class="flex flex-wrap gap-4 items-end">
                         <div>
                             <label class="text-sm text-slate-400 block mb-2">Voicing:</label>
-                            <select id="attya_voicingSelect" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
+                            <select id="attya_voicingSelect" onchange="attyaOnVoicingChange()" class="bg-slate-700 border border-slate-600 rounded px-3 py-2 text-white text-sm">
                                 <option value="rootless">Rootless (optimal A/B)</option>
                                 <option value="shell">Shell (3rd + 7th)</option>
                             </select>
@@ -3782,6 +3782,7 @@
         <!-- Footer -->
         <footer class="text-center text-slate-500 text-sm mt-8 pt-4 pb-16 border-t border-slate-700">
             <span class="font-semibold text-slate-400">The Shed</span> · Feedback? DM <a href="https://twitter.com/dksf" target="_blank" class="text-amber-400 hover:text-amber-300">@dksf</a> on Twitter/X
+            <span class="ml-2 text-slate-600">build 2025.02.13</span>
         </footer>
 
     </div>
@@ -4596,6 +4597,87 @@
             return true;
         }
 
+        // Generic breakdown display for session stats and cumulative problem areas.
+        // config: {
+        //   stats:          session stats object (e.g. int_stats, shell_stats)
+        //   sectionId:      'int_breakdownSection'
+        //   gridId:         'int_breakdownGrid'
+        //   getPct:         (data) => first-try percentage 0-100
+        //   getCount:       (data) => '(3/4)' count string, or null to omit
+        //   getAvgTime:     (data) => avg time in seconds, or null to skip time display
+        //   slowThreshold:  seconds (default 2)
+        //   problemAreas:   array from getProblemAreas(), or null for session-only modes
+        //   problemPct:     (area) => pct for problem area card, or null for default
+        //   problemCount:   (area) => count string for problem area card, or null
+        // }
+        function showGenericBreakdown(config) {
+            const grid = document.getElementById(config.gridId);
+            grid.innerHTML = '';
+            const hasSession = Object.keys(config.stats).length > 0;
+            const labelFn = config.labelFn || (key => key);
+
+            if (hasSession) {
+                const keys = Object.keys(config.stats).sort();
+                for (const key of keys) {
+                    const data = config.stats[key];
+                    const pct = config.getPct(data);
+                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
+
+                    let slowRing = '';
+                    let timeHtml = '';
+                    if (config.getAvgTime) {
+                        const avgT = config.getAvgTime(data);
+                        const threshold = config.slowThreshold || 2;
+                        const isSlow = avgT > threshold;
+                        slowRing = isSlow ? ' ring-2 ring-orange-500' : '';
+                        const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
+                        const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
+                        timeHtml = `<p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
+                    } else if (config.getSlowRing) {
+                        const isSlow = config.getSlowRing(data);
+                        slowRing = isSlow ? ' ring-2 ring-orange-500' : '';
+                        timeHtml = isSlow ? '<p class="text-xs text-orange-400">⏱ slow</p>' : '';
+                    }
+
+                    const countStr = config.getCount ? config.getCount(data) : '';
+                    const div = document.createElement('div');
+                    div.className = `p-2 rounded border ${color}${slowRing} text-sm`;
+                    div.innerHTML = `<p class="font-semibold">${labelFn(key, data)}</p><p>${pct}% ${countStr}</p>${timeHtml}`;
+                    grid.appendChild(div);
+                }
+                document.getElementById(config.sectionId).classList.remove('hidden');
+            } else if (config.problemAreas && config.problemAreas.length > 0) {
+                const problemLabelFn = config.problemLabelFn || (area => area.key || area.name);
+                for (const area of config.problemAreas) {
+                    const pct = config.problemPct ? config.problemPct(area) : (
+                        area.mistakeRate !== undefined
+                            ? Math.round((1 - area.mistakeRate) * 100)
+                            : Math.round(area.successRate)
+                    );
+                    const countStr = config.problemCount ? config.problemCount(area) : '';
+                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
+                    let slowRing = '';
+                    let timeHtml = '';
+                    if (config.problemGetAvgTime) {
+                        const avgT = config.problemGetAvgTime(area);
+                        const threshold = config.slowThreshold || 2;
+                        const isSlow = avgT > threshold;
+                        slowRing = isSlow ? ' ring-2 ring-orange-500' : '';
+                        const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
+                        const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
+                        timeHtml = `<p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
+                    }
+                    const div = document.createElement('div');
+                    div.className = `p-2 rounded border ${color}${slowRing} text-sm`;
+                    div.innerHTML = `<p class="font-semibold">${problemLabelFn(area)}</p><p>${pct}% ${countStr}</p>${timeHtml}`;
+                    grid.appendChild(div);
+                }
+                document.getElementById(config.sectionId).classList.remove('hidden');
+            } else {
+                document.getElementById(config.sectionId).classList.add('hidden');
+            }
+        }
+
         // ============ MODE SWITCHING ============
         function switchMode(mode) {
             currentMode = mode;
@@ -5164,32 +5246,13 @@
         }
 
         function intShowBreakdown() {
-            const grid = document.getElementById('int_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(int_stats).length > 0;
-
-            if (!hasSessionStats) {
-                // No session data - hide breakdown (Problem Areas in History shows cumulative)
-                document.getElementById('int_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            // Show this session's stats
-            for (const [interval, data] of Object.entries(int_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${interval}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('int_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: int_stats, sectionId: 'int_breakdownSection', gridId: 'int_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function intPlayAgain() {
@@ -5607,30 +5670,13 @@
         }
 
         function chShowBreakdown() {
-            const grid = document.getElementById('ch_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(ch_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('ch_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [chord, data] of Object.entries(ch_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${chord}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('ch_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: ch_stats, sectionId: 'ch_breakdownSection', gridId: 'ch_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function chPlayAgain() {
@@ -6310,30 +6356,14 @@
         }
 
         function iiviShowBreakdown() {
-            const grid = document.getElementById('iivi_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(iivi_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('iivi_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [key, data] of Object.entries(iivi_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">Key of ${key}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('iivi_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: iivi_stats, sectionId: 'iivi_breakdownSection', gridId: 'iivi_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                labelFn: key => `Key of ${key}`,
+                problemAreas: null
+            });
         }
 
         function iiviPlayAgain() {
@@ -6854,30 +6884,13 @@
         }
 
         function scShowBreakdown() {
-            const grid = document.getElementById('sc_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(sc_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('sc_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [scale, data] of Object.entries(sc_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${scale}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('sc_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: sc_stats, sectionId: 'sc_breakdownSection', gridId: 'sc_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function scPlayAgain() {
@@ -7270,27 +7283,13 @@
         }
 
         function extShowBreakdown() {
-            const grid = document.getElementById('ext_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(ext_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('ext_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [key, stats] of Object.entries(ext_stats)) {
-                const pct = Math.round((stats.correct / stats.total) * 100);
-                const isSlow = stats.slow > 0;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${stats.correct}/${stats.total})</p>${isSlow ? '<p class="text-xs text-orange-400">⏱ slow</p>' : ''}`;
-                grid.appendChild(div);
-            }
-            document.getElementById('ext_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: ext_stats, sectionId: 'ext_breakdownSection', gridId: 'ext_breakdownGrid',
+                getPct: d => Math.round((d.correct / d.total) * 100),
+                getCount: d => `(${d.correct}/${d.total})`,
+                getSlowRing: d => d.slow > 0,
+                problemAreas: null
+            });
         }
 
         function extPlayAgain() {
@@ -7725,27 +7724,14 @@
         }
 
         function altShowBreakdown() {
-            const grid = document.getElementById('alt_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(alt_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('alt_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [key, stats] of Object.entries(alt_stats)) {
-                const pct = Math.round((stats.correct / stats.total) * 100);
-                const isSlow = stats.slow > 0;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                div.innerHTML = `<p class="font-semibold">7${key}</p><p>${pct}% (${stats.correct}/${stats.total})</p>${isSlow ? '<p class="text-xs text-orange-400">⏱ slow</p>' : ''}`;
-                grid.appendChild(div);
-            }
-            document.getElementById('alt_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: alt_stats, sectionId: 'alt_breakdownSection', gridId: 'alt_breakdownGrid',
+                getPct: d => Math.round((d.correct / d.total) * 100),
+                getCount: d => `(${d.correct}/${d.total})`,
+                getSlowRing: d => d.slow > 0,
+                labelFn: key => `7${key}`,
+                problemAreas: null
+            });
         }
 
         function altPlayAgain() {
@@ -8205,30 +8191,13 @@
         }
 
         function advShowBreakdown() {
-            const grid = document.getElementById('adv_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(adv_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('adv_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [chord, data] of Object.entries(adv_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${chord}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('adv_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: adv_stats, sectionId: 'adv_breakdownSection', gridId: 'adv_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function advPlayAgain() {
@@ -8776,30 +8745,13 @@
         }
 
         function miiviShowBreakdown() {
-            const grid = document.getElementById('miivi_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(miivi_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('miivi_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [keyName, data] of Object.entries(miivi_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${keyName}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('miivi_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: miivi_stats, sectionId: 'miivi_breakdownSection', gridId: 'miivi_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function miiviPlayAgain() {
@@ -9275,30 +9227,13 @@
         }
 
         function kbShowBreakdown() {
-            const grid = document.getElementById('kb_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(kb_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('kb_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [keyName, data] of Object.entries(kb_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${keyName}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('kb_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: kb_stats, sectionId: 'kb_breakdownSection', gridId: 'kb_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function kbPlayAgain() {
@@ -9823,30 +9758,13 @@
         }
 
         function jtouShowBreakdown() {
-            const grid = document.getElementById('jtou_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(jtou_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('jtou_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [keyName, data] of Object.entries(jtou_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${keyName}</p><p>${pct}% (${data.firstTry}/${data.total})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('jtou_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: jtou_stats, sectionId: 'jtou_breakdownSection', gridId: 'jtou_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function jtouPlayAgain() {
@@ -10423,36 +10341,13 @@
         }
 
         function dom7vShowBreakdown() {
-            const grid = document.getElementById('dom7v_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(dom7v_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('dom7v_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [chordName, data] of Object.entries(dom7v_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' :
-                              pct >= 50 ? 'bg-yellow-900 border-yellow-700' :
-                              'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${chordName}</p>
-                                 <p>${pct}% (${data.firstTry}/${data.total})</p>
-                                 <p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('dom7v_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: dom7v_stats, sectionId: 'dom7v_breakdownSection', gridId: 'dom7v_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function dom7vLoadHistory() {
@@ -10886,36 +10781,13 @@
         }
 
         function extvShowBreakdown() {
-            const grid = document.getElementById('extv_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(extv_stats).length > 0;
-
-            if (!hasSessionStats) {
-                document.getElementById('extv_breakdownSection').classList.add('hidden');
-                return;
-            }
-
-            for (const [chordName, data] of Object.entries(extv_stats)) {
-                const pct = Math.round((data.firstTry / data.total) * 100);
-                const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                const isSlow = avgT > 2;
-
-                const color = pct >= 80 ? 'bg-green-900 border-green-700' :
-                              pct >= 50 ? 'bg-yellow-900 border-yellow-700' :
-                              'bg-red-900 border-red-700';
-                const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-
-                const div = document.createElement('div');
-                div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                div.innerHTML = `<p class="font-semibold">${chordName}</p>
-                                 <p>${pct}% (${data.firstTry}/${data.total})</p>
-                                 <p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                grid.appendChild(div);
-            }
-            document.getElementById('extv_breakdownSection').classList.remove('hidden');
+            showGenericBreakdown({
+                stats: extv_stats, sectionId: 'extv_breakdownSection', gridId: 'extv_breakdownGrid',
+                getPct: d => Math.round((d.firstTry / d.total) * 100),
+                getCount: d => `(${d.firstTry}/${d.total})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: null
+            });
         }
 
         function extvLoadHistory() {
@@ -11367,53 +11239,15 @@
         }
 
         function pentShowBreakdown() {
-            const grid = document.getElementById('pent_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(pent_stats).length > 0;
-
-            if (hasSessionStats) {
-                for (const [key, data] of Object.entries(pent_stats)) {
-                    const pct = data.attempts > 0 ? Math.round(((data.attempts - data.mistakes) / data.attempts) * 100) : 0;
-                    const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = data.attempts - data.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${firstTry}/${data.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('pent_breakdownSection').classList.remove('hidden');
-            } else {
-                // Show only problem areas from cumulative stats on page load
-                const problemAreas = pentGetProblemAreas();
-                if (problemAreas.length === 0) {
-                    document.getElementById('pent_breakdownSection').classList.add('hidden');
-                    return;
-                }
-                for (const area of problemAreas) {
-                    const data = pent_cumulativeStats[area.key];
-                    const firstTry = data.attempts - data.mistakes;
-                    const pct = data.attempts > 0 ? Math.round((firstTry / data.attempts) * 100) : 0;
-                    const avgT = data.times.length > 0 ? (data.times.reduce((a, b) => a + b, 0) / data.times.length) : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    div.innerHTML = `<p class="font-semibold">${area.key}</p><p>${pct}% (${firstTry}/${data.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('pent_breakdownSection').classList.remove('hidden');
-            }
+            showGenericBreakdown({
+                stats: pent_stats, sectionId: 'pent_breakdownSection', gridId: 'pent_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0,
+                problemAreas: pentGetProblemAreas(),
+                problemCount: area => { const d = pent_cumulativeStats[area.key]; return `(${d.attempts - d.mistakes}/${d.attempts})`; },
+                problemGetAvgTime: area => { const d = pent_cumulativeStats[area.key]; return d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length : 0; }
+            });
         }
 
         function pentLoadHistory() {
@@ -11842,48 +11676,15 @@
         }
 
         function bebopShowBreakdown() {
-            const grid = document.getElementById('bebop_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(bebop_stats).length > 0;
-
-            if (hasSessionStats) {
-                for (const [key, stat] of Object.entries(bebop_stats)) {
-                    const pct = Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100);
-                    const avgT = stat.times.length > 0 ? (stat.times.reduce((a, b) => a + b, 0) / stat.times.length / 1000) : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 4; // Scales use 4s threshold
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = stat.attempts - stat.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${firstTry}/${stat.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('bebop_breakdownSection').classList.remove('hidden');
-            } else {
-                // Show only problem areas from cumulative stats on page load
-                const problemAreas = bebopGetProblemAreas();
-                if (problemAreas.length === 0) {
-                    document.getElementById('bebop_breakdownSection').classList.add('hidden');
-                    return;
-                }
-                for (const area of problemAreas) {
-                    const data = bebop_cumulativeStats[area.key];
-                    const firstTry = data.attempts - data.mistakes;
-                    const pct = data.attempts > 0 ? Math.round((firstTry / data.attempts) * 100) : 0;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color} text-sm`;
-                    div.innerHTML = `<p class="font-semibold">${area.key}</p><p>${pct}% (${firstTry}/${data.attempts})</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('bebop_breakdownSection').classList.remove('hidden');
-            }
+            showGenericBreakdown({
+                stats: bebop_stats, sectionId: 'bebop_breakdownSection', gridId: 'bebop_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length / 1000 : 0,
+                slowThreshold: 4,
+                problemAreas: bebopGetProblemAreas(),
+                problemCount: area => { const d = bebop_cumulativeStats[area.key]; return `(${d.attempts - d.mistakes}/${d.attempts})`; }
+            });
         }
 
         function bebopLoadHistory() {
@@ -12244,53 +12045,16 @@
         }
 
         function tritoneShowBreakdown() {
-            const grid = document.getElementById('tritone_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(tritone_stats).length > 0;
-
-            if (hasSessionStats) {
-                for (const [key, stat] of Object.entries(tritone_stats)) {
-                    const sub = tritoneGetSubstitution(stat.originalRoot);
-                    const pct = Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100);
-                    const avgT = stat.times.length > 0 ? (stat.times.reduce((a, b) => a + b, 0) / stat.times.length / 1000) : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = stat.attempts - stat.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key} → ${sub.subName}</p><p>${pct}% (${firstTry}/${stat.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('tritone_breakdownSection').classList.remove('hidden');
-            } else {
-                // Show only problem areas from cumulative stats on page load
-                const problemAreas = tritoneGetProblemAreas();
-                if (problemAreas.length === 0) {
-                    document.getElementById('tritone_breakdownSection').classList.add('hidden');
-                    return;
-                }
-                for (const area of problemAreas) {
-                    const data = tritone_cumulativeStats[area.key];
-                    // Parse key to get original root (e.g., "G7" -> 7)
-                    const noteName = area.key.replace('7', '');
-                    const originalRoot = NOTE_NAMES.indexOf(noteName);
-                    const sub = originalRoot >= 0 ? tritoneGetSubstitution(originalRoot) : { subName: '?' };
-                    const firstTry = data.attempts - data.mistakes;
-                    const pct = data.attempts > 0 ? Math.round((firstTry / data.attempts) * 100) : 0;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color} text-sm`;
-                    div.innerHTML = `<p class="font-semibold">${area.key} → ${sub.subName}</p><p>${pct}% (${firstTry}/${data.attempts})</p>`;
-                    grid.appendChild(div);
-                }
-                document.getElementById('tritone_breakdownSection').classList.remove('hidden');
-            }
+            showGenericBreakdown({
+                stats: tritone_stats, sectionId: 'tritone_breakdownSection', gridId: 'tritone_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length / 1000 : 0,
+                labelFn: (key, data) => `${key} → ${tritoneGetSubstitution(data.originalRoot).subName}`,
+                problemAreas: tritoneGetProblemAreas(),
+                problemCount: area => { const d = tritone_cumulativeStats[area.key]; return `(${d.attempts - d.mistakes}/${d.attempts})`; },
+                problemLabelFn: area => { const n = area.key.replace('7', ''); const r = NOTE_NAMES.indexOf(n); return `${area.key} → ${r >= 0 ? tritoneGetSubstitution(r).subName : '?'}`; }
+            });
         }
 
         function tritoneLoadHistory() {
@@ -12704,53 +12468,14 @@
         }
 
         function shellShowBreakdown() {
-            const grid = document.getElementById('shell_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(shell_stats).length > 0;
-
-            if (hasSessionStats) {
-                Object.keys(shell_stats).sort().forEach(key => {
-                    const stat = shell_stats[key];
-                    const pct = stat.attempts > 0
-                        ? Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100)
-                        : 0;
-                    const avgT = stat.times.length > 0
-                        ? (stat.times.reduce((a, b) => a + b, 0) / stat.times.length / 1000)
-                        : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = stat.attempts - stat.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${firstTry}/${stat.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('shell_breakdownSection').classList.remove('hidden');
-            } else {
-                // Show only problem areas from cumulative stats on page load
-                const problemAreas = shellGetProblemAreas();
-                if (problemAreas.length === 0) {
-                    document.getElementById('shell_breakdownSection').classList.add('hidden');
-                    return;
-                }
-                problemAreas.forEach(area => {
-                    const data = shell_cumulativeStats[area.key];
-                    const firstTry = data.attempts - data.mistakes;
-                    const pct = data.attempts > 0 ? Math.round((firstTry / data.attempts) * 100) : 0;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color} text-sm`;
-                    div.innerHTML = `<p class="font-semibold">${area.key}</p><p>${pct}% (${firstTry}/${data.attempts})</p>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('shell_breakdownSection').classList.remove('hidden');
-            }
+            showGenericBreakdown({
+                stats: shell_stats, sectionId: 'shell_breakdownSection', gridId: 'shell_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length / 1000 : 0,
+                problemAreas: shellGetProblemAreas(),
+                problemCount: area => { const d = shell_cumulativeStats[area.key]; return `(${d.attempts - d.mistakes}/${d.attempts})`; }
+            });
         }
 
         function shellLoadHistory() {
@@ -13201,53 +12926,14 @@
         }
 
         function upperShowBreakdown() {
-            const grid = document.getElementById('upper_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(upper_stats).length > 0;
-
-            if (hasSessionStats) {
-                Object.keys(upper_stats).sort().forEach(key => {
-                    const stat = upper_stats[key];
-                    const pct = stat.attempts > 0
-                        ? Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100)
-                        : 0;
-                    const avgT = stat.times.length > 0
-                        ? (stat.times.reduce((a, b) => a + b, 0) / stat.times.length / 1000)
-                        : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = stat.attempts - stat.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${firstTry}/${stat.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('upper_breakdownSection').classList.remove('hidden');
-            } else {
-                // Show only problem areas from cumulative stats on page load
-                const problemAreas = upperGetProblemAreas();
-                if (problemAreas.length === 0) {
-                    document.getElementById('upper_breakdownSection').classList.add('hidden');
-                    return;
-                }
-                problemAreas.forEach(area => {
-                    const data = upper_cumulativeStats[area.key];
-                    const firstTry = data.attempts - data.mistakes;
-                    const pct = data.attempts > 0 ? Math.round((firstTry / data.attempts) * 100) : 0;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color} text-sm`;
-                    div.innerHTML = `<p class="font-semibold">${area.key}</p><p>${pct}% (${firstTry}/${data.attempts})</p>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('upper_breakdownSection').classList.remove('hidden');
-            }
+            showGenericBreakdown({
+                stats: upper_stats, sectionId: 'upper_breakdownSection', gridId: 'upper_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length / 1000 : 0,
+                problemAreas: upperGetProblemAreas(),
+                problemCount: area => { const d = upper_cumulativeStats[area.key]; return `(${d.attempts - d.mistakes}/${d.attempts})`; }
+            });
         }
 
         function upperLoadHistory() {
@@ -14035,32 +13721,13 @@
         }
 
         function freestyleShowBreakdown() {
-            const grid = document.getElementById('freestyle_breakdownGrid');
-            grid.innerHTML = '';
-
-            const hasSessionStats = Object.keys(freestyle_stats).length > 0;
-
-            if (hasSessionStats) {
-                Object.keys(freestyle_stats).sort().forEach(key => {
-                    const stat = freestyle_stats[key];
-                    const pct = stat.attempts > 0 ? Math.round(((stat.attempts - stat.mistakes) / stat.attempts) * 100) : 0;
-                    const avgT = stat.times.length > 0 ? stat.times.reduce((a, b) => a + b, 0) / stat.times.length / 1000 : 0;
-                    const avgTStr = avgT > 0 ? avgT.toFixed(1) : '--';
-                    const isSlow = avgT > 2;
-
-                    const color = pct >= 80 ? 'bg-green-900 border-green-700' : pct >= 50 ? 'bg-yellow-900 border-yellow-700' : 'bg-red-900 border-red-700';
-                    const slowIndicator = isSlow ? ' ring-2 ring-orange-500' : '';
-                    const div = document.createElement('div');
-                    div.className = `p-2 rounded border ${color}${slowIndicator} text-sm`;
-                    const timeClass = isSlow ? 'text-orange-400' : 'text-slate-400';
-                    const firstTry = stat.attempts - stat.mistakes;
-                    div.innerHTML = `<p class="font-semibold">${key}</p><p>${pct}% (${firstTry}/${stat.attempts})</p><p class="text-xs ${timeClass}">Avg: ${avgTStr}s${isSlow ? ' ⏱' : ''}</p>`;
-                    grid.appendChild(div);
-                });
-                document.getElementById('freestyle_breakdownSection').classList.remove('hidden');
-            } else {
-                document.getElementById('freestyle_breakdownSection').classList.add('hidden');
-            }
+            showGenericBreakdown({
+                stats: freestyle_stats, sectionId: 'freestyle_breakdownSection', gridId: 'freestyle_breakdownGrid',
+                getPct: d => d.attempts > 0 ? Math.round(((d.attempts - d.mistakes) / d.attempts) * 100) : 0,
+                getCount: d => `(${d.attempts - d.mistakes}/${d.attempts})`,
+                getAvgTime: d => d.times.length > 0 ? d.times.reduce((a, b) => a + b, 0) / d.times.length / 1000 : 0,
+                problemAreas: null
+            });
         }
 
         function freestyleLoadHistory() {
@@ -14151,6 +13818,8 @@
         let attya_firstTryCount = 0;
         let attya_currentFirstTry = true;
         let attya_waitingForRelease = false; // Require all notes released before next chord
+        let attya_previewVoicings = null;
+        let attya_previewBarIndex = -1;
 
         function attyaRenderChartGrid() {
             const grid = document.getElementById('attya_chartGrid');
@@ -14170,7 +13839,7 @@
                         cellContent = `<div class="text-[10px] text-slate-500 absolute -top-3 left-1">${section.name}</div>` + cellContent;
                     }
 
-                    html += `<div id="attya_bar_${barIndex}" class="relative p-2 bg-slate-700/50 rounded border border-slate-600 text-slate-300 font-mono" style="font-size: 11px;">${cellContent}</div>`;
+                    html += `<div id="attya_bar_${barIndex}" class="relative p-2 bg-slate-700/50 rounded border border-slate-600 text-slate-300 font-mono cursor-pointer hover:bg-slate-600/50 transition" style="font-size: 11px;" onclick="attyaPreviewBar(${barIndex})">${cellContent}</div>`;
                     barIndex++;
                 }
             }
@@ -14213,6 +13882,134 @@
             }
         }
 
+        function attyaEnsurePreviewVoicings() {
+            if (attya_previewVoicings) return attya_previewVoicings;
+            const chords = flattenChart(ATTYA_CHART);
+            const voicingType = document.getElementById('attya_voicingSelect').value;
+            if (voicingType === 'shell') {
+                attya_previewVoicings = chords.map(chord => ({
+                    chord: chord,
+                    voicingType: 'shell',
+                    pitchClasses: getVoicingPitchClasses(chord.root, chord.type, 'shell'),
+                    midiNotes: getVoicingMidiNotes(chord.root, chord.type, 'shell', 48)
+                }));
+            } else {
+                attya_previewVoicings = computeOptimalVoicings(chords);
+            }
+            return attya_previewVoicings;
+        }
+
+        function attyaGetBarChordIndices() {
+            const mapping = [];
+            let chordIndex = 0;
+            for (const section of ATTYA_CHART.sections) {
+                for (const bar of section.bars) {
+                    const numChords = bar.chords ? bar.chords.length : 1;
+                    const indices = [];
+                    for (let i = 0; i < numChords; i++) {
+                        indices.push(chordIndex++);
+                    }
+                    mapping.push(indices);
+                }
+            }
+            return mapping;
+        }
+
+        function attyaPreviewBar(barIndex) {
+            if (attya_isPlaying) return;
+
+            // Toggle off if clicking same bar
+            if (attya_previewBarIndex === barIndex) {
+                attyaClearPreview();
+                return;
+            }
+
+            const voicings = attyaEnsurePreviewVoicings();
+            const barMapping = attyaGetBarChordIndices();
+            const chordIndices = barMapping[barIndex];
+            if (!chordIndices || chordIndices.length === 0) return;
+
+            attya_previewBarIndex = barIndex;
+
+            // Reset all bar highlights, then highlight clicked bar
+            document.querySelectorAll('[id^="attya_bar_"]').forEach(el => {
+                el.classList.remove('bg-blue-600/30', 'border-blue-500', 'bg-green-600/30', 'border-green-500', 'bg-amber-600/30', 'border-amber-500');
+                el.classList.add('bg-slate-700/50', 'border-slate-600');
+            });
+            const barEl = document.getElementById(`attya_bar_${barIndex}`);
+            if (barEl) {
+                barEl.classList.remove('bg-slate-700/50', 'border-slate-600');
+                barEl.classList.add('bg-amber-600/30', 'border-amber-500');
+            }
+
+            // Hide complete display if showing, show challenge display
+            document.getElementById('attya_completeDisplay').classList.add('hidden');
+            const challengeDisplay = document.getElementById('attya_challengeDisplay');
+            challengeDisplay.classList.remove('hidden');
+
+            const barVoicings = chordIndices.map(i => voicings[i]);
+            const first = barVoicings[0];
+            const isShell = document.getElementById('attya_voicingSelect').value === 'shell';
+            const midiToName = midi => NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1);
+
+            document.getElementById('attya_sectionLabel').textContent = `Bar ${first.chord.bar} • Section ${first.chord.section}`;
+
+            if (barVoicings.length === 1) {
+                document.getElementById('attya_chordDisplay').textContent = first.chord.symbol;
+                document.getElementById('attya_voicingType').textContent = isShell ? 'Shell (3-7)' : `Type ${first.voicingType}`;
+                const noteNames = first.midiNotes && first.midiNotes.length > 0
+                    ? first.midiNotes.map(midiToName).join('  ')
+                    : getVoicingNoteNames(first.chord.root, first.chord.type, first.voicingType);
+                document.getElementById('attya_hint').textContent = noteNames;
+            } else {
+                document.getElementById('attya_chordDisplay').innerHTML = barVoicings.map(v => v.chord.symbol).join(' <span class="text-slate-500 text-3xl">|</span> ');
+                const vTypes = barVoicings.map(v => isShell ? 'Shell' : `Type ${v.voicingType}`);
+                document.getElementById('attya_voicingType').textContent = vTypes.join('  |  ');
+                const noteNamesArr = barVoicings.map(v => {
+                    return v.midiNotes && v.midiNotes.length > 0
+                        ? v.midiNotes.map(midiToName).join(' ')
+                        : getVoicingNoteNames(v.chord.root, v.chord.type, v.voicingType);
+                });
+                document.getElementById('attya_hint').textContent = noteNamesArr.join('  |  ');
+            }
+
+            document.getElementById('attya_hint').classList.remove('hidden');
+            document.getElementById('attya_feedbackText').textContent = '';
+
+            // Clear piano and highlight voicing notes
+            document.querySelectorAll('#attya_pianoSvg .key').forEach(key => {
+                key.classList.remove('key-active', 'key-correct', 'key-wrong');
+            });
+            for (const v of barVoicings) {
+                if (v.midiNotes && v.midiNotes.length > 0) {
+                    for (const midi of v.midiNotes) {
+                        highlightKey('attya_pianoSvg', midi, 'key-correct', true);
+                    }
+                }
+            }
+        }
+
+        function attyaClearPreview() {
+            attya_previewBarIndex = -1;
+            document.getElementById('attya_challengeDisplay').classList.add('hidden');
+            document.querySelectorAll('[id^="attya_bar_"]').forEach(el => {
+                el.classList.remove('bg-amber-600/30', 'border-amber-500', 'bg-blue-600/30', 'border-blue-500', 'bg-green-600/30', 'border-green-500');
+                el.classList.add('bg-slate-700/50', 'border-slate-600');
+            });
+            document.querySelectorAll('#attya_pianoSvg .key').forEach(key => {
+                key.classList.remove('key-active', 'key-correct', 'key-wrong');
+            });
+        }
+
+        function attyaOnVoicingChange() {
+            attya_previewVoicings = null;
+            if (attya_previewBarIndex >= 0) {
+                const b = attya_previewBarIndex;
+                attya_previewBarIndex = -1;
+                attyaPreviewBar(b);
+            }
+        }
+
         function attyaStartGame() {
             const voicing = document.getElementById('attya_voicingSelect').value;
 
@@ -14239,6 +14036,7 @@
             attya_firstTryCount = 0;
             attya_currentFirstTry = true;
             attya_waitingForRelease = false;
+            attya_previewBarIndex = -1;
 
             // Update UI
             document.getElementById('attya_settingsPanel').classList.add('hidden');
@@ -14262,6 +14060,7 @@
 
         function attyaStopGame() {
             attya_isPlaying = false;
+            attya_previewBarIndex = -1;
 
             document.getElementById('attya_settingsPanel').classList.remove('hidden');
             document.getElementById('attya_challengeDisplay').classList.add('hidden');
