@@ -13950,26 +13950,18 @@
             const barVoicings = chordIndices.map(i => voicings[i]);
             const first = barVoicings[0];
             const isShell = document.getElementById('attya_voicingSelect').value === 'shell';
-            const midiToName = midi => NOTE_NAMES[midi % 12] + (Math.floor(midi / 12) - 1);
 
             document.getElementById('attya_sectionLabel').textContent = `Bar ${first.chord.bar} • Section ${first.chord.section}`;
 
             if (barVoicings.length === 1) {
                 document.getElementById('attya_chordDisplay').textContent = first.chord.symbol;
                 document.getElementById('attya_voicingType').textContent = isShell ? 'Shell (3-7)' : `Type ${first.voicingType}`;
-                const noteNames = first.midiNotes && first.midiNotes.length > 0
-                    ? first.midiNotes.map(midiToName).join('  ')
-                    : getVoicingNoteNames(first.chord.root, first.chord.type, first.voicingType);
-                document.getElementById('attya_hint').textContent = noteNames;
+                document.getElementById('attya_hint').textContent = getVoicingNoteNames(first.chord.root, first.chord.type, first.voicingType);
             } else {
                 document.getElementById('attya_chordDisplay').innerHTML = barVoicings.map(v => v.chord.symbol).join(' <span class="text-slate-500 text-3xl">|</span> ');
                 const vTypes = barVoicings.map(v => isShell ? 'Shell' : `Type ${v.voicingType}`);
                 document.getElementById('attya_voicingType').textContent = vTypes.join('  |  ');
-                const noteNamesArr = barVoicings.map(v => {
-                    return v.midiNotes && v.midiNotes.length > 0
-                        ? v.midiNotes.map(midiToName).join(' ')
-                        : getVoicingNoteNames(v.chord.root, v.chord.type, v.voicingType);
-                });
+                const noteNamesArr = barVoicings.map(v => getVoicingNoteNames(v.chord.root, v.chord.type, v.voicingType));
                 document.getElementById('attya_hint').textContent = noteNamesArr.join('  |  ');
             }
 
